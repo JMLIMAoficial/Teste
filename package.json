@@ -18,6 +18,7 @@
     "db:push": "prisma db push",
     "db:seed": "npx prisma db seed",
     "db:reset-profiles": "npx tsx prisma/seed.ts --reset",
+    "start:api:railway": "prisma migrate deploy && npm run start:prod --workspace=@acompannhante/api",
     "db:studio": "prisma studio",
     "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",

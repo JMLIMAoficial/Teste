@@ -1,0 +1,47 @@
+FROM node:20-bookworm-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY prisma ./prisma
+
+RUN npm ci
+
+COPY apps/api ./apps/api
+
+RUN npm run db:generate \
+  && npm run build --workspace=@acompannhante/api
+
+FROM node:20-bookworm-slim AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install -g prisma@6.9.0
+
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY prisma ./prisma
+
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+RUN mkdir -p /app/uploads
+
+EXPOSE 4000
+
+CMD ["sh", "-c", "prisma migrate deploy && node apps/api/dist/main.js"]
