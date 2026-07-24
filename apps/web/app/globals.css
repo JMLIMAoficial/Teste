@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #14141f;
+  --bg-tertiary: #1e1e2e;
+  --surface-elevated: #252536;
+  --purple-deep: #6b21a8;
+  --purple-light: #9333ea;
+  --gold: #f59e0b;
+  --orange: #ea580c;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-subtle: #1e293b;
+  --success: #22c55e;
+}
+
+@theme inline {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-purple-deep: var(--purple-deep);
+  --color-purple-light: var(--purple-light);
+  --color-gold: var(--gold);
+  --color-orange: var(--orange);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-success: var(--success);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+  }
+
+  .animate-flame-float,
+  .animate-ember-rise,
+  .animate-flame-flicker {
+    animation: none;
+  }
+}
+
+@keyframes flame-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.08);
+  }
+}
+
+@keyframes flame-flicker {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scaleY(1);
+  }
+  25% {
+    opacity: 1;
+    transform: scaleY(1.12) scaleX(0.92);
+  }
+  75% {
+    opacity: 0.7;
+    transform: scaleY(0.9) scaleX(1.05);
+  }
+}
+
+@keyframes ember-rise {
+  0% {
+    transform: translateY(0) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-56px) scale(0.2);
+    opacity: 0;
+  }
+}
+
+.animate-flame-float {
+  animation: flame-float 1.2s ease-in-out infinite;
+}
+
+.animate-flame-flicker {
+  animation: flame-flicker 0.8s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+.animate-ember-rise {
+  animation: ember-rise 2s ease-out infinite;
+}

@@ -1,0 +1,45 @@
+{
+  "name": "acompannhante",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "npm run dev --workspace=@acompannhante/web",
+    "dev:api": "npm run dev --workspace=@acompannhante/api",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:seed": "npx prisma db seed",
+    "db:reset-profiles": "npx tsx prisma/seed.ts --reset",
+    "db:studio": "prisma studio",
+    "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
+    "setup": "npm install && npm run docker:up && npm run db:generate",
+    "setup:windows": "powershell -ExecutionPolicy Bypass -File scripts/setup-windows.ps1",
+    "test:api": "npm run test --workspace=@acompannhante/api"
+  },
+  "devDependencies": {
+    "prisma": "^6.9.0",
+    "turbo": "^2.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "bcrypt": "^5.1.1"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@11.6.2",
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  }
+}

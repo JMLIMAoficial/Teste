@@ -1,0 +1,759 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+  schemas   = ["auth", "users", "profiles", "media", "cms", "analytics", "engagement", "platform"]
+}
+
+// ─── AUTH SCHEMA ───────────────────────────────────────────────
+
+enum DeviceType {
+  desktop
+  mobile
+  tablet
+  unknown
+
+  @@schema("auth")
+}
+
+enum AuthSurface {
+  companion
+  admin
+
+  @@schema("auth")
+}
+
+model Credential {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @unique @map("user_id") @db.Uuid
+  passwordHash      String    @map("password_hash") @db.VarChar(255)
+  passwordChangedAt DateTime? @map("password_changed_at")
+  failedAttempts    Int       @default(0) @map("failed_attempts") @db.SmallInt
+  lockedUntil       DateTime? @map("locked_until")
+  twoFactorEnabled  Boolean   @default(false) @map("two_factor_enabled")
+  twoFactorSecret   String?   @map("two_factor_secret") @db.VarChar(255)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@map("credentials")
+  @@schema("auth")
+}
+
+model Session {
+  id               String      @id @default(uuid()) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
+  refreshTokenHash String      @map("refresh_token_hash") @db.VarChar(255)
+  deviceName       String?     @map("device_name") @db.VarChar(100)
+  deviceType       DeviceType  @default(unknown) @map("device_type")
+  ipAddress        String?     @map("ip_address") @db.VarChar(45)
+  userAgent        String?     @map("user_agent") @db.VarChar(500)
+  surface          AuthSurface @default(companion)
+  lastActiveAt     DateTime    @default(now()) @map("last_active_at")
+  expiresAt        DateTime    @map("expires_at")
+  revokedAt        DateTime?   @map("revoked_at")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+  @@schema("auth")
+}
+
+// ─── USERS SCHEMA ──────────────────────────────────────────────
+
+enum UserStatus {
+  active
+  inactive
+  blocked
+  pending_verification
+
+  @@schema("users")
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  email         String     @unique @db.VarChar(255)
+  emailVerified Boolean    @default(false) @map("email_verified")
+  status        UserStatus @default(pending_verification)
+  displayName   String?    @map("display_name") @db.VarChar(100)
+  lastLoginAt   DateTime?  @map("last_login_at")
+  blockedAt     DateTime?  @map("blocked_at")
+  blockedReason String?    @map("blocked_reason")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  deletedAt     DateTime?  @map("deleted_at")
+
+  roles    UserRole[]
+  settings UserSettings?
+
+  @@map("users")
+  @@schema("users")
+}
+
+model Role {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String     @unique @db.VarChar(50)
+  displayName String     @map("display_name") @db.VarChar(100)
+  permissions Json       @default("[]")
+  isSystem    Boolean    @default(true) @map("is_system")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  userRoles   UserRole[]
+
+  @@map("roles")
+  @@schema("users")
+}
+
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  assignedBy String?  @map("assigned_by") @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+  @@schema("users")
+}
+
+model UserSettings {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @map("user_id") @db.Uuid
+  locale      String   @default("pt-BR") @db.VarChar(10)
+  timezone    String   @default("America/Sao_Paulo") @db.VarChar(50)
+  preferences Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+  @@schema("users")
+}
+
+// ─── PROFILES SCHEMA ───────────────────────────────────────────
+
+enum ProfileStatus {
+  pending
+  approved
+  rejected
+  blocked
+
+  @@schema("profiles")
+}
+
+enum ProfilePosition {
+  active
+  passive
+  versatile
+
+  @@schema("profiles")
+}
+
+enum PricingDisplayMode {
+  show
+  consult
+  hidden
+
+  @@schema("profiles")
+}
+
+model Profile {
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String             @unique @map("user_id") @db.Uuid
+  slug               String             @unique @db.VarChar(100)
+  displayName        String             @map("display_name") @db.VarChar(100)
+  birthDate          DateTime?          @map("birth_date") @db.Date
+  bio                String?
+  sexualPreference   String?            @map("sexual_preference") @db.VarChar(50)
+  position           ProfilePosition?
+  penisSizeCm        Int?               @map("penis_size_cm") @db.SmallInt
+  status             ProfileStatus      @default(pending)
+  isPublic           Boolean            @default(false) @map("is_public")
+  isPremium          Boolean            @default(false) @map("is_premium")
+  isFeatured         Boolean            @default(false) @map("is_featured")
+  isVerified         Boolean            @default(false) @map("is_verified")
+  premiumExpiresAt   DateTime?          @map("premium_expires_at")
+  featuredExpiresAt  DateTime?          @map("featured_expires_at")
+  pricingDisplayMode PricingDisplayMode @default(show) @map("pricing_display_mode")
+  viewCount          Int                @default(0) @map("view_count")
+  seoIndexable       Boolean            @default(true) @map("seo_indexable")
+  whatsapp           String?            @db.VarChar(500)
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  deletedAt          DateTime?          @map("deleted_at")
+
+  location     ProfileLocation?
+  pricing      ProfilePricing?
+  availability ProfileAvailability[]
+  photos       Photo[]
+  tags     ProfileTag[]
+  videos   Video[]
+  moments  Moment[]
+  reviews  Review[]
+
+  @@index([status, isPublic])
+  @@map("profiles")
+  @@schema("profiles")
+}
+
+model ProfileLocation {
+  id        String   @id @default(uuid()) @db.Uuid
+  profileId String   @unique @map("profile_id") @db.Uuid
+  cep       String?  @db.VarChar(10)
+  neighborhood String? @db.VarChar(100)
+  city      String   @db.VarChar(100)
+  state     String   @db.VarChar(2)
+  latitude  Decimal? @db.Decimal(9, 6)
+  longitude Decimal? @db.Decimal(9, 6)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("profile_locations")
+  @@schema("profiles")
+}
+
+model ProfilePricing {
+  id          String   @id @default(uuid()) @db.Uuid
+  profileId   String   @unique @map("profile_id") @db.Uuid
+  thirtyMin   Int?     @map("thirty_min")
+  oneHour     Int?     @map("one_hour")
+  twoHours    Int?     @map("two_hours")
+  overnight   Int?
+  customItems Json     @default("[]") @map("custom_items")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("profile_pricing")
+  @@schema("profiles")
+}
+
+model ProfileAvailability {
+  id          String   @id @default(uuid()) @db.Uuid
+  profileId   String   @map("profile_id") @db.Uuid
+  dayOfWeek   Int      @map("day_of_week") @db.SmallInt
+  isAvailable Boolean  @default(false) @map("is_available")
+  startTime   String?  @map("start_time") @db.VarChar(5)
+  endTime     String?  @map("end_time") @db.VarChar(5)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, dayOfWeek])
+  @@map("profile_availability")
+  @@schema("profiles")
+}
+
+// ─── MEDIA SCHEMA ──────────────────────────────────────────────
+
+enum MediaAssetStatus {
+  uploading
+  ready
+  failed
+
+  @@schema("media")
+}
+
+enum PhotoStatus {
+  pending
+  approved
+  rejected
+  hidden
+
+  @@schema("media")
+}
+
+model MediaAsset {
+  id          String           @id @default(uuid()) @db.Uuid
+  ownerType   String           @default("photo") @map("owner_type") @db.VarChar(50)
+  storagePath String           @map("storage_path") @db.VarChar(500)
+  mimeType    String           @map("mime_type") @db.VarChar(100)
+  sizeBytes   BigInt           @map("size_bytes")
+  status      MediaAssetStatus @default(uploading)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  photos Photo[]
+  videos Video[]
+  moments Moment[]
+
+  @@map("media_assets")
+  @@schema("media")
+}
+
+model Photo {
+  id           String      @id @default(uuid()) @db.Uuid
+  profileId    String      @map("profile_id") @db.Uuid
+  mediaAssetId String      @map("media_asset_id") @db.Uuid
+  status       PhotoStatus @default(pending)
+  sortOrder    Int         @default(0) @map("sort_order") @db.SmallInt
+  isCover      Boolean     @default(false) @map("is_cover")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status])
+  @@map("photos")
+  @@schema("media")
+}
+
+enum ContentStatus {
+  pending
+  approved
+  rejected
+  hidden
+  removed
+
+  @@schema("media")
+}
+
+enum MomentMediaType {
+  photo
+  video
+
+  @@schema("media")
+}
+
+model Video {
+  id               String        @id @default(uuid()) @db.Uuid
+  profileId        String        @map("profile_id") @db.Uuid
+  mediaAssetId     String        @map("media_asset_id") @db.Uuid
+  title            String?       @db.VarChar(200)
+  description      String?
+  status           ContentStatus @default(pending)
+  showInProfile    Boolean       @default(true) @map("show_in_profile")
+  showInGallery    Boolean       @default(true) @map("show_in_gallery")
+  durationSeconds  Int?          @map("duration_seconds")
+  viewCount        Int           @default(0) @map("view_count")
+  likeCount        Int           @default(0) @map("like_count")
+  commentCount     Int           @default(0) @map("comment_count")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  deletedAt        DateTime?     @map("deleted_at")
+
+  profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status])
+  @@index([status, showInGallery])
+  @@map("videos")
+  @@schema("media")
+}
+
+model Moment {
+  id           String          @id @default(uuid()) @db.Uuid
+  profileId    String          @map("profile_id") @db.Uuid
+  mediaAssetId String          @map("media_asset_id") @db.Uuid
+  mediaType    MomentMediaType @default(photo) @map("media_type")
+  caption      String?         @db.VarChar(300)
+  status       ContentStatus   @default(pending)
+  viewCount    Int             @default(0) @map("view_count")
+  likeCount    Int             @default(0) @map("like_count")
+  commentCount Int             @default(0) @map("comment_count")
+  shareCount   Int             @default(0) @map("share_count")
+  publishedAt  DateTime?       @map("published_at")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  deletedAt    DateTime?       @map("deleted_at")
+
+  profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status])
+  @@index([status, publishedAt])
+  @@map("moments")
+  @@schema("media")
+}
+
+// ─── CMS SCHEMA ────────────────────────────────────────────────
+
+model TagCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(100)
+  slug      String   @unique @db.VarChar(100)
+  sortOrder Int      @default(0) @map("sort_order") @db.SmallInt
+  tags      Tag[]
+
+  @@map("tag_categories")
+  @@schema("cms")
+}
+
+model Tag {
+  id           String   @id @default(uuid()) @db.Uuid
+  slug         String   @unique @db.VarChar(100)
+  name         String   @db.VarChar(100)
+  categoryId   String?  @map("category_id") @db.Uuid
+  profileCount Int      @default(0) @map("profile_count")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  category TagCategory? @relation(fields: [categoryId], references: [id])
+
+  @@map("tags")
+  @@schema("cms")
+}
+
+model SeoMetadata {
+  id              String   @id @default(uuid()) @db.Uuid
+  entityType      String   @map("entity_type") @db.VarChar(30)
+  entityId        String   @map("entity_id") @db.Uuid
+  title           String?  @db.VarChar(200)
+  description     String?  @db.VarChar(300)
+  ogImageUrl      String?  @map("og_image_url") @db.VarChar(500)
+  canonicalUrl    String?  @map("canonical_url") @db.VarChar(500)
+  robots          String?  @db.VarChar(50)
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([entityType, entityId])
+  @@map("seo_metadata")
+  @@schema("cms")
+}
+
+// ─── PROFILES: TAG ORDER ───────────────────────────────────────
+
+model ProfileTag {
+  profileId String @map("profile_id") @db.Uuid
+  tagId     String @map("tag_id") @db.Uuid
+  sortOrder Int    @default(0) @map("sort_order") @db.SmallInt
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, tagId])
+  @@map("profile_tags")
+  @@schema("profiles")
+}
+
+// ─── ANALYTICS SCHEMA ──────────────────────────────────────────
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(50)
+  profileId  String?  @map("profile_id") @db.Uuid
+  sessionId  String?  @map("session_id") @db.VarChar(64)
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([eventType, createdAt])
+  @@index([profileId, createdAt])
+  @@map("analytics_events")
+  @@schema("analytics")
+}
+
+enum HotScoreLevel {
+  cold
+  warm
+  hot
+  blazing
+
+  @@schema("analytics")
+}
+
+model HotScore {
+  id        String        @id @default(uuid()) @db.Uuid
+  profileId String        @unique @map("profile_id") @db.Uuid
+  score     Decimal       @default(0) @db.Decimal(5, 2)
+  level     HotScoreLevel @default(cold)
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@index([score])
+  @@map("hot_scores")
+  @@schema("analytics")
+}
+
+// ─── ENGAGEMENT SCHEMA ─────────────────────────────────────────
+
+enum CommentTargetType {
+  profile
+  moment
+  video
+
+  @@schema("engagement")
+}
+
+enum LikeTargetType {
+  moment
+  video
+
+  @@schema("engagement")
+}
+
+enum EngagementStatus {
+  pending
+  approved
+  rejected
+  hidden
+
+  @@schema("engagement")
+}
+
+model Comment {
+  id         String             @id @default(uuid()) @db.Uuid
+  targetType CommentTargetType  @map("target_type")
+  targetId   String             @map("target_id") @db.Uuid
+  profileId  String             @map("profile_id") @db.Uuid
+  authorName String             @map("author_name") @db.VarChar(100)
+  content    String             @db.VarChar(500)
+  status     EngagementStatus   @default(pending)
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  @@index([targetType, targetId, status])
+  @@index([profileId, status])
+  @@map("comments")
+  @@schema("engagement")
+}
+
+model Review {
+  id                String           @id @default(uuid()) @db.Uuid
+  profileId         String           @map("profile_id") @db.Uuid
+  authorName        String           @map("author_name") @db.VarChar(100)
+  authorFingerprint String?          @map("author_fingerprint") @db.VarChar(64)
+  rating            Int              @db.SmallInt
+  comment           String?          @db.VarChar(500)
+  status            EngagementStatus @default(pending)
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, status])
+  @@map("reviews")
+  @@schema("engagement")
+}
+
+model ReviewSummary {
+  profileId     String   @id @map("profile_id") @db.Uuid
+  averageRating Decimal  @map("average_rating") @db.Decimal(3, 2)
+  reviewCount   Int      @map("review_count")
+  distribution  Json     @default("{}")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("review_summaries")
+  @@schema("engagement")
+}
+
+model Like {
+  id         String         @id @default(uuid()) @db.Uuid
+  targetType LikeTargetType @map("target_type")
+  targetId   String         @map("target_id") @db.Uuid
+  profileId  String         @map("profile_id") @db.Uuid
+  visitorId  String         @map("visitor_id") @db.VarChar(64)
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@unique([targetType, targetId, visitorId])
+  @@index([targetType, targetId])
+  @@map("likes")
+  @@schema("engagement")
+}
+
+// ─── PLATFORM SCHEMA ───────────────────────────────────────────
+
+enum NotificationPriority {
+  low
+  normal
+  high
+  critical
+
+  @@schema("platform")
+}
+
+enum NotificationStatus {
+  unread
+  read
+  archived
+
+  @@schema("platform")
+}
+
+model Notification {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @map("user_id") @db.Uuid
+  type             String               @db.VarChar(50)
+  title            String               @db.VarChar(200)
+  message          String
+  priority         NotificationPriority @default(normal)
+  status           NotificationStatus   @default(unread)
+  sourceEvent      String?              @map("source_event") @db.VarChar(50)
+  sourceEventId    String?              @map("source_event_id") @db.Uuid
+  actionUrl        String?              @map("action_url") @db.VarChar(500)
+  metadata         Json                 @default("{}")
+  readAt           DateTime?            @map("read_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+
+  @@index([userId, status, createdAt])
+  @@map("notifications")
+  @@schema("platform")
+}
+
+enum ConversationStatus {
+  open
+  in_progress
+  answered
+  closed
+
+  @@schema("platform")
+}
+
+enum ConversationPriority {
+  low
+  normal
+  high
+  critical
+
+  @@schema("platform")
+}
+
+enum MessageSenderType {
+  companion
+  admin
+  system
+
+  @@schema("platform")
+}
+
+model Conversation {
+  id            String               @id @default(uuid()) @db.Uuid
+  profileId     String               @map("profile_id") @db.Uuid
+  userId        String               @map("user_id") @db.Uuid
+  subject       String               @db.VarChar(100)
+  status        ConversationStatus   @default(open)
+  priority      ConversationPriority @default(normal)
+  assignedTo    String?              @map("assigned_to") @db.Uuid
+  internalNotes String?              @map("internal_notes")
+  closedAt      DateTime?            @map("closed_at")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  messages Message[]
+
+  @@index([userId, status])
+  @@index([status, updatedAt])
+  @@map("conversations")
+  @@schema("platform")
+}
+
+model Message {
+  id             String            @id @default(uuid()) @db.Uuid
+  conversationId String            @map("conversation_id") @db.Uuid
+  senderType     MessageSenderType @map("sender_type")
+  senderId       String            @map("sender_id") @db.Uuid
+  body           String            @db.VarChar(2000)
+  readAt         DateTime?         @map("read_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+  @@schema("platform")
+}
+
+model SiteSetting {
+  key         String   @id @db.VarChar(100)
+  value       String
+  description String?  @db.VarChar(200)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedBy   String?  @map("updated_by") @db.Uuid
+
+  @@map("site_settings")
+  @@schema("platform")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorEmail String?  @map("actor_email") @db.VarChar(255)
+  action     String   @db.VarChar(100)
+  entityType String?  @map("entity_type") @db.VarChar(50)
+  entityId   String?  @map("entity_id") @db.Uuid
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+  @@schema("platform")
+}
+
+enum VerificationRequestStatus {
+  pending
+  approved
+  rejected
+
+  @@schema("platform")
+}
+
+enum ReportTargetType {
+  profile
+  comment
+  moment
+  review
+
+  @@schema("platform")
+}
+
+enum ReportReason {
+  fake
+  inappropriate
+  spam
+  harassment
+  other
+
+  @@schema("platform")
+}
+
+enum ReportStatus {
+  pending
+  resolved
+  dismissed
+
+  @@schema("platform")
+}
+
+model Report {
+  id          String           @id @default(uuid()) @db.Uuid
+  targetType  ReportTargetType @map("target_type")
+  targetId    String           @map("target_id") @db.Uuid
+  profileId   String?          @map("profile_id") @db.Uuid
+  reason      ReportReason
+  description String?          @db.VarChar(500)
+  reporterIp  String?          @map("reporter_ip") @db.VarChar(45)
+  status      ReportStatus     @default(pending)
+  resolution  String?          @db.VarChar(500)
+  resolvedBy  String?          @map("resolved_by") @db.Uuid
+  resolvedAt  DateTime?        @map("resolved_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@map("reports")
+  @@schema("platform")
+}
+
+model VerificationRequest {
+  id              String                    @id @default(uuid()) @db.Uuid
+  profileId       String                    @map("profile_id") @db.Uuid
+  status          VerificationRequestStatus @default(pending)
+  note            String?                   @db.VarChar(500)
+  rejectionReason String?                   @map("rejection_reason") @db.VarChar(500)
+  reviewedBy      String?                   @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?                 @map("reviewed_at")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([profileId, createdAt])
+  @@map("verification_requests")
+  @@schema("platform")
+}
