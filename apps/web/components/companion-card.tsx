@@ -10,6 +10,11 @@ function positionLabel(position?: string | null) {
   return null;
 }
 
+function cardLocation(profile: CompanionCardData) {
+  if (profile.neighborhood?.trim()) return profile.neighborhood.trim();
+  return profile.city.replace(/,\s*[A-Z]{2}$/i, "").trim() || profile.city;
+}
+
 export function CompanionCard({ profile }: { profile: CompanionCardData }) {
   const position = positionLabel(profile.position);
   const imageUrl = profile.coverPhotoThumbUrl ?? profile.coverPhotoUrl;
@@ -75,7 +80,7 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
             )}
           </h3>
           <p className="text-sm text-text-secondary">
-            {(profile.age ?? 0) > 0 ? `${profile.age} anos` : "Idade não informada"}
+            {cardLocation(profile)}
             {profile.penisSizeCm != null && (
               <>
                 {" · "}
@@ -84,8 +89,6 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
                 </span>
               </>
             )}
-            {" · "}
-            {profile.neighborhood ? `${profile.neighborhood}, ${profile.city}` : profile.city}
           </p>
           {position && <p className="mt-0.5 text-xs text-text-muted">{position}</p>}
           <div className="mt-2 flex flex-wrap gap-1">
