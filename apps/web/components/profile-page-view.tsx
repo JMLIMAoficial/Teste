@@ -8,8 +8,8 @@ import {
   ProfilePhotoGalleryProvider,
   ProfilePhotoGrid,
   ProfilePhotoTrigger,
-  resolvePhotoIndex,
 } from "@/components/profile-photo-gallery";
+import { resolvePhotoIndex } from "@/lib/profile-photo-utils";
 import { VideoCard } from "@/components/video-card";
 import { WhatsAppButton } from "@/components/whatsapp-button";
 import type { MomentItem, VideoItem } from "@/lib/api";
