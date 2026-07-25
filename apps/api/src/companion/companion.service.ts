@@ -350,7 +350,7 @@ export class CompanionService {
       const geo = await this.geocoding.geocodeCep(dto.cep);
       if (!geo) {
         locationWarning =
-          'CEP não encontrado — salvamos cidade/estado, mas a proximidade no mapa pode não funcionar.';
+          'Não foi possível validar este CEP. Verifique o número — salvamos cidade/estado, mas a proximidade pode não funcionar.';
         locationUpdate = {
           cep: dto.cep,
           neighborhood: dto.neighborhood ?? profile.location?.neighborhood ?? undefined,
