@@ -240,7 +240,7 @@ export class SearchService implements OnModuleInit {
     });
 
     if (filters.tag) {
-      data = data.filter((d) => d.tags.some((t) => t.toLowerCase() === filters.tag!.toLowerCase()));
+      data = data.filter((d) => d.tags.some((t: string) => t.toLowerCase() === filters.tag!.toLowerCase()));
     }
 
     return { data, total: data.length, source: 'database' as const };

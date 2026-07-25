@@ -78,7 +78,7 @@ export type ProfileCardInput = {
   hotScore?: number;
   hotScoreLevel?: HotScoreLevel;
   tags?: string[];
-  location: { city: string; state: string } | null;
+  location: { city: string; state: string; neighborhood?: string | null } | null;
   coverPhotoUrl?: string | null;
   coverPhotoThumbUrl?: string | null;
   distanceKm?: number;
