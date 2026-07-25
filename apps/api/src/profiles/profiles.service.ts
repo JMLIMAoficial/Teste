@@ -17,7 +17,7 @@ export class ProfilesService {
     private readonly coverPhoto: CoverPhotoService,
   ) {}
 
-  async listNearby(lat: number, lng: number, radiusKm = 100, limit = 12) {
+  async listNearby(lat: number, lng: number, _radiusKm = 100, limit = 50) {
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       throw new BadRequestException('Coordenadas inválidas');
     }
@@ -27,22 +27,28 @@ export class ProfilesService {
         status: 'approved',
         isPublic: true,
         deletedAt: null,
-        location: {
-          latitude: { not: null },
-          longitude: { not: null },
-        },
       },
       include: { location: true, tags: true },
     });
 
     const ranked = profiles
       .map((p) => {
-        const plat = Number(p.location!.latitude);
-        const plng = Number(p.location!.longitude);
-        return { profile: p, distanceKm: haversineKm(lat, lng, plat, plng) };
+        const plat =
+          p.location?.latitude != null ? Number(p.location.latitude) : Number.NaN;
+        const plng =
+          p.location?.longitude != null ? Number(p.location.longitude) : Number.NaN;
+        const distanceKm =
+          !Number.isNaN(plat) && !Number.isNaN(plng)
+            ? haversineKm(lat, lng, plat, plng)
+            : undefined;
+        return { profile: p, distanceKm };
       })
-      .filter((item) => item.distanceKm <= radiusKm)
-      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .sort((a, b) => {
+        if (a.distanceKm == null && b.distanceKm == null) return 0;
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      })
       .slice(0, limit);
 
     const coverMap = await this.coverPhoto.resolveCoverPhotoMap(ranked.map((r) => r.profile.id));
@@ -91,7 +97,6 @@ export class ProfilesService {
         };
       }),
       total: ranked.length,
-      radiusKm,
       center: { lat, lng },
     };
   }

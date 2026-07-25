@@ -28,7 +28,7 @@ export class ProfilesController {
       latitude,
       longitude,
       radius ? parseFloat(radius) : 150,
-      limit ? parseInt(limit, 10) : 12,
+      limit ? parseInt(limit, 10) : 50,
     );
   }
 

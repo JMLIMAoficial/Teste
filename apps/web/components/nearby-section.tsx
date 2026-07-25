@@ -26,7 +26,7 @@ export function NearbySection() {
   const loadNearby = useCallback(async (position: GeoPosition) => {
     setLoadingProfiles(true);
     try {
-      const result = await fetchNearbyProfiles(position.lat, position.lng, 200, 24);
+      const result = await fetchNearbyProfiles(position.lat, position.lng, 200, 50);
       setProfiles(result.profiles);
       setSortedByDistance(true);
     } finally {

@@ -485,15 +485,19 @@ export async function fetchNearbyProfiles(
   }
 }
 
-function mockNearby(lat: number, lng: number, radiusKm: number, limit: number) {
+function mockNearby(lat: number, lng: number, _radiusKm: number, limit: number) {
   return featuredProfiles
     .map((p, index) => {
       const coords = profileCoordinates[p.slug];
-      const distanceKm = coords ? haversineKm(lat, lng, coords.lat, coords.lng) : 9999;
+      const distanceKm = coords ? haversineKm(lat, lng, coords.lat, coords.lng) : undefined;
       return { ...p, distanceKm, index };
     })
-    .filter((p) => p.distanceKm <= radiusKm)
-    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .sort((a, b) => {
+      if (a.distanceKm == null && b.distanceKm == null) return 0;
+      if (a.distanceKm == null) return 1;
+      if (b.distanceKm == null) return -1;
+      return a.distanceKm - b.distanceKm;
+    })
     .slice(0, limit)
     .map(({ index: _, ...p }) => p);
 }

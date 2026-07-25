@@ -39,7 +39,7 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
   const loadNearby = useCallback(async (position: GeoPosition) => {
     setLoadingProfiles(true);
     try {
-      const result = await fetchNearbyProfiles(position.lat, position.lng, 200, 48);
+      const result = await fetchNearbyProfiles(position.lat, position.lng, 200, 50);
       setProfiles(result.profiles.length > 0 ? result.profiles : initialProfiles);
       setSortedByDistance(true);
       setNeighborhoodFilter("");
@@ -103,7 +103,7 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
             {sortedByDistance && geo.status === "ready"
               ? `Ordenado por distância${
                   filteredProfiles[0]?.distanceKm != null
-                    ? ` · ${formatDistanceKm(filteredProfiles[0].distanceKm)}`
+                    ? ` · mais próximo a ${formatDistanceKm(filteredProfiles[0].distanceKm)}`
                     : ""
                 }`
               : "Ative a localização para ver quem está mais perto"}
