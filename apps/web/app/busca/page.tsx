@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CompanionCard } from "@/components/companion-card";
-import { PublicFooter, PublicHeader } from "@/components/public-header";
+import { PublicPageLayout } from "@/components/public-header";
 import { SearchAdvancedPanel, SearchResultsSummary } from "@/components/search-advanced-panel";
 import { fetchSearch, fetchSeoMeta, fetchTags } from "@/lib/api";
 
@@ -69,9 +69,7 @@ export default async function BuscaPage({
   const { profiles, total, source } = searchResult;
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <PublicHeader />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+    <PublicPageLayout mainClassName="mx-auto flex-1 max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
         <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">Encontre o perfil ideal</h1>
         <p className="mt-2 text-sm text-text-secondary">
           Filtre por local, posição, preferências e destaques para achar quem combina com você.
@@ -107,8 +105,6 @@ export default async function BuscaPage({
             )}
           </>
         )}
-      </main>
-      <PublicFooter />
-    </div>
+    </PublicPageLayout>
   );
 }

@@ -52,7 +52,7 @@ export function PublicHeader() {
 
 export function PublicFooter() {
   return (
-    <footer className="border-t border-border-subtle bg-bg-secondary">
+    <footer className="mt-auto border-t border-border-subtle bg-bg-secondary">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <p className="text-sm text-text-muted">
@@ -75,5 +75,21 @@ export function PublicFooter() {
         </div>
       </div>
     </footer>
+  );
+}
+
+export function PublicPageLayout({
+  children,
+  mainClassName = "flex-1",
+}: {
+  children: React.ReactNode;
+  mainClassName?: string;
+}) {
+  return (
+    <div className="flex min-h-screen flex-col bg-bg-primary">
+      <PublicHeader />
+      <main className={mainClassName}>{children}</main>
+      <PublicFooter />
+    </div>
   );
 }

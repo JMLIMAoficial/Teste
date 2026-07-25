@@ -70,7 +70,8 @@ export class MomentsService {
         mediaAssetId: asset.id,
         mediaType: mediaType ?? (isVideo ? 'video' : 'photo'),
         caption: caption?.slice(0, 300),
-        status: 'pending',
+        status: 'approved',
+        publishedAt: new Date(),
       },
       include: { mediaAsset: true },
     });

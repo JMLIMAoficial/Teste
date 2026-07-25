@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PublicFooter, PublicHeader } from "@/components/public-header";
+import { PublicPageLayout } from "@/components/public-header";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -63,9 +63,7 @@ export default async function StatusPage() {
   const dataSource = profiles.ok ? "api" : "mock";
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <PublicHeader />
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+    <PublicPageLayout mainClassName="mx-auto flex-1 max-w-5xl px-4 py-10 sm:px-6">
         <h1 className="text-3xl font-bold text-text-primary">Status do Projeto</h1>
         <p className="mt-2 text-text-secondary">
           Visão geral do que está implementado e do estado dos serviços.
@@ -185,8 +183,6 @@ npm run dev:api`}
             ))}
           </div>
         </section>
-      </main>
-      <PublicFooter />
-    </div>
+    </PublicPageLayout>
   );
 }

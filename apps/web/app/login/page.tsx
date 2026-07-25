@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { PublicFooter, PublicHeader } from "@/components/public-header";
+import { PublicPageLayout } from "@/components/public-header";
 import { login } from "@/lib/auth";
 
 export default function LoginPage() {
@@ -38,9 +38,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <PublicHeader />
-      <main className="mx-auto max-w-md px-4 py-16 sm:px-6">
+    <PublicPageLayout mainClassName="mx-auto flex-1 max-w-md px-4 py-16 sm:px-6">
         <h1 className="text-3xl font-bold text-text-primary">Entrar</h1>
         <p className="mt-2 text-text-secondary">Acesse sua conta de acompanhante ou admin.</p>
 
@@ -98,8 +96,6 @@ export default function LoginPage() {
             </div>
           </div>
         )}
-      </main>
-      <PublicFooter />
-    </div>
+    </PublicPageLayout>
   );
 }

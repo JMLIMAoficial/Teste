@@ -73,7 +73,7 @@ export function MomentUploadModal({ open, onClose, onSuccess }: MomentUploadModa
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-border-subtle bg-bg-secondary p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-text-primary">Publicar momento</h2>
         <p className="mt-1 text-sm text-text-muted">
-          Fotos chamam mais atenção no feed. Seu momento passa por moderação antes de ficar público.
+          Fotos chamam mais atenção no feed. Seu momento fica público assim que for enviado.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">

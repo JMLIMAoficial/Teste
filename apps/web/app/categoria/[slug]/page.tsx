@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanionCard } from "@/components/companion-card";
-import { PublicFooter, PublicHeader } from "@/components/public-header";
+import { PublicPageLayout } from "@/components/public-header";
 import { fetchCategory, fetchSeoMeta } from "@/lib/api";
 
 export async function generateMetadata({
@@ -36,9 +36,7 @@ export default async function CategoriaPage({
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <PublicHeader />
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <PublicPageLayout mainClassName="mx-auto flex-1 max-w-7xl px-4 py-10 sm:px-6">
         <Link href="/busca" className="text-sm text-text-muted hover:text-text-primary">
           ← Busca
         </Link>
@@ -58,8 +56,6 @@ export default async function CategoriaPage({
             ))}
           </div>
         )}
-      </main>
-      <PublicFooter />
-    </div>
+    </PublicPageLayout>
   );
 }

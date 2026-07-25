@@ -96,7 +96,7 @@ export default function PainelMomentosPage() {
             {
               label: "Publicados",
               value: stats.approvedMoments,
-              hint: `${stats.pendingMoments} em análise`,
+              hint: "visíveis no feed",
             },
           ].map((item) => (
             <div

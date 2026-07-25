@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CompanionCard } from "@/components/companion-card";
-import { PublicFooter, PublicHeader } from "@/components/public-header";
+import { PublicPageLayout } from "@/components/public-header";
 import { fetchRankings, fetchSeoMeta } from "@/lib/api";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -28,9 +28,7 @@ export default async function RankingsPage({
   const { entries, total, source } = await fetchRankings(type, 24);
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <PublicHeader />
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <PublicPageLayout mainClassName="mx-auto flex-1 max-w-7xl px-4 py-10 sm:px-6">
         <h1 className="text-3xl font-bold text-text-primary">Rankings</h1>
         <p className="mt-2 text-text-secondary">
           Perfis mais populares e em alta na plataforma.
@@ -66,8 +64,6 @@ export default async function RankingsPage({
             </div>
           ))}
         </div>
-      </main>
-      <PublicFooter />
-    </div>
+    </PublicPageLayout>
   );
 }

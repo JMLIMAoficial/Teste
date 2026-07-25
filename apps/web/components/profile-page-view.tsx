@@ -421,7 +421,7 @@ export function ProfilePageView({
 
   return (
     <ProfilePhotoGalleryProvider photos={galleryPhotos}>
-    <div className={`min-h-screen bg-bg-primary ${showWhatsApp ? "pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:pb-8" : "pb-8"}`}>
+    <div className={`min-h-full bg-bg-primary ${showWhatsApp ? "pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:pb-8" : "pb-8"}`}>
       <section
         className={`relative aspect-[3/4] max-h-[min(85vh,720px)] w-full overflow-hidden md:hidden ${profile.isPremium ? "ring-2 ring-inset ring-gold/30" : ""}`}
       >

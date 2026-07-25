@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProfilePageView } from "@/components/profile-page-view";
 import { JsonLd } from "@/components/json-ld";
-import { PublicFooter, PublicHeader } from "@/components/public-header";
+import { PublicPageLayout } from "@/components/public-header";
 import {
   fetchComments,
   fetchProfileBySlug,
@@ -140,11 +140,9 @@ export default async function ProfilePage({
       };
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <PublicPageLayout mainClassName="flex-1">
       <JsonLd data={schema} />
-      <PublicHeader />
-      <main>
-        <ProfilePageView
+      <ProfilePageView
           profile={profileData}
           videos={videosData.videos}
           moments={momentsData.moments}
@@ -152,9 +150,7 @@ export default async function ProfilePage({
           reviewSummary={reviewsData.summary}
           comments={comments}
           similarProfiles={similarData.profiles}
-        />
-      </main>
-      <PublicFooter />
-    </div>
+      />
+    </PublicPageLayout>
   );
 }
