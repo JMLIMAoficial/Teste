@@ -25,7 +25,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends openssl ca-certificates libvips42 \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g prisma@6.9.0
 

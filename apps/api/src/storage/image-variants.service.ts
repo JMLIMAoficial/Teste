@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import sharp from 'sharp';
+import sharp = require('sharp');
 
 export const THUMB_WIDTH = 480;
 export const MEDIUM_WIDTH = 1200;
