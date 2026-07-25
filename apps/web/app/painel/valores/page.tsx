@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PainelShell } from "@/components/painel-shell";
+import { useToast } from "@/components/toast";
 import { apiFetch, getAccessToken, logout } from "@/lib/auth";
 
 type PricingData = {
@@ -19,11 +20,10 @@ const inputClass =
 
 export default function PainelValoresPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [data, setData] = useState<PricingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -48,17 +48,15 @@ export default function PainelValoresPage() {
     e.preventDefault();
     if (!data) return;
     setSaving(true);
-    setError("");
-    setMessage("");
     try {
       const updated = await apiFetch<PricingData>("/v1/companion/pricing", {
         method: "PATCH",
         body: JSON.stringify(data),
       });
       setData(updated);
-      setMessage("Valores salvos com sucesso.");
+      toast("Valores salvos com sucesso.", "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar");
+      toast(err instanceof Error ? err.message : "Erro ao salvar", "error");
     } finally {
       setSaving(false);
     }
@@ -144,9 +142,6 @@ export default function PainelValoresPage() {
             </div>
           </section>
         )}
-
-        {message && <p className="text-sm text-success">{message}</p>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
 
         <button
           type="submit"

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { HotScoreThermometer } from "@/components/hot-score-thermometer";
+import { useToast } from "@/components/toast";
 import { apiFetch } from "@/lib/auth";
 
 type AdminProfile = {
@@ -52,11 +53,11 @@ const inputClass =
 
 export function AdminProfileDetail({ profileId }: { profileId: string }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [tags, setTags] = useState<TagOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
 
   const [form, setForm] = useState({
     displayName: "",
@@ -119,7 +120,6 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
 
   async function save() {
     setSaving(true);
-    setMessage("");
     try {
       await apiFetch(`/v1/admin/profiles/${profileId}`, {
         method: "PATCH",
@@ -142,10 +142,10 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
           tagIds: form.selectedTagIds,
         }),
       });
-      setMessage("Perfil salvo com sucesso.");
+      toast("Perfil salvo com sucesso.", "success");
       await load();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao salvar");
+      toast(err instanceof Error ? err.message : "Erro ao salvar", "error");
     } finally {
       setSaving(false);
     }
@@ -157,10 +157,10 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
         method: "PATCH",
         body: JSON.stringify({ force }),
       });
-      setMessage(force ? "Perfil aprovado (forçado)." : "Perfil aprovado.");
+      toast(force ? "Perfil aprovado (forçado)." : "Perfil aprovado.", "success");
       await load();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao aprovar");
+      toast(err instanceof Error ? err.message : "Erro ao aprovar", "error");
     }
   }
 
@@ -171,10 +171,10 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
         method: "PATCH",
         body: JSON.stringify({ reason: reason || "Não atende aos critérios" }),
       });
-      setMessage("Perfil rejeitado.");
+      toast("Perfil rejeitado.", "success");
       await load();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao rejeitar");
+      toast(err instanceof Error ? err.message : "Erro ao rejeitar", "error");
     }
   }
 
@@ -186,20 +186,20 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
         method: "PATCH",
         body: JSON.stringify({ reason: reason || undefined }),
       });
-      setMessage("Perfil bloqueado.");
+      toast("Perfil bloqueado.", "success");
       await load();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao bloquear");
+      toast(err instanceof Error ? err.message : "Erro ao bloquear", "error");
     }
   }
 
   async function unblockProfile() {
     try {
       await apiFetch(`/v1/admin/profiles/${profileId}/unblock`, { method: "PATCH" });
-      setMessage("Perfil desbloqueado.");
+      toast("Perfil desbloqueado.", "success");
       await load();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao desbloquear");
+      toast(err instanceof Error ? err.message : "Erro ao desbloquear", "error");
     }
   }
 
@@ -207,10 +207,10 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
     if (!confirm("Excluir perfil permanentemente? Esta ação não pode ser desfeita.")) return;
     try {
       await apiFetch(`/v1/admin/profiles/${profileId}`, { method: "DELETE" });
-      setMessage("Perfil excluído.");
+      toast("Perfil excluído.", "success");
       router.push("/admin/perfis");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao excluir");
+      toast(err instanceof Error ? err.message : "Erro ao excluir", "error");
     }
   }
 
@@ -535,10 +535,6 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
             ))}
           </div>
         </section>
-      )}
-
-      {message && (
-        <p className="mt-6 text-sm text-purple-light">{message}</p>
       )}
 
       <div className="mt-6">

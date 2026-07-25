@@ -5,7 +5,6 @@ import { PublicPageLayout } from "@/components/public-header";
 import {
   fetchComments,
   fetchProfileBySlug,
-  fetchProfileMoments,
   fetchProfileVideos,
   fetchReviews,
   fetchSeoSchema,
@@ -43,6 +42,7 @@ type ApiProfileDetail = {
   isVerified?: boolean;
   hasWhatsApp?: boolean;
   whatsappUrl?: string;
+  socialLinks?: Partial<Record<"privacy" | "onlyfans" | "x" | "instagram", string>>;
   pricing?: {
     mode: "show" | "consult";
     thirtyMin?: number | null;
@@ -73,13 +73,12 @@ export default async function ProfilePage({
   }
 
   const profileId = apiProfile?.id;
-  const [reviewsData, comments, videosData, momentsData, similarData, schema] = profileId
+  const [reviewsData, comments, videosData, similarData, schema] = profileId
     ? await Promise.all([
         fetchReviews(slug),
         fetchComments("profile", profileId),
         fetchProfileVideos(slug),
-        fetchProfileMoments(slug),
-        fetchSimilarProfiles(slug),
+        fetchSimilarProfiles(slug, 4),
         fetchSeoSchema("profile", {
           slug,
           name: apiProfile!.name,
@@ -88,7 +87,7 @@ export default async function ProfilePage({
           imageUrl: apiProfile!.coverPhotoUrl ?? apiProfile!.photos?.[0]?.url,
         }),
       ])
-    : [{ data: [], summary: null }, [], { videos: [] }, { moments: [] }, { profiles: [], total: 0 }, null];
+    : [{ data: [], summary: null }, [], { videos: [] }, { profiles: [], total: 0 }, null];
 
   const profileData = apiProfile
     ? {
@@ -115,6 +114,7 @@ export default async function ProfilePage({
         isVerified: apiProfile.isVerified,
         hasWhatsApp: apiProfile.hasWhatsApp,
         whatsappUrl: apiProfile.whatsappUrl,
+        socialLinks: apiProfile.socialLinks,
         pricing: apiProfile.pricing ?? null,
         availability: apiProfile.availability ?? [],
         isMock: false,
@@ -145,7 +145,6 @@ export default async function ProfilePage({
       <ProfilePageView
           profile={profileData}
           videos={videosData.videos}
-          moments={momentsData.moments}
           reviews={reviewsData.data}
           reviewSummary={reviewsData.summary}
           comments={comments}

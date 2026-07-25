@@ -6,6 +6,7 @@ import { haversineKm } from '../common/geo.util';
 import { toPublicCard, formatMemberSince, buildProfileLocationFields } from '../common/profile.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { parseSocialLinks } from '../common/social-links.util';
 
 @Injectable()
 export class ProfilesService {
@@ -339,6 +340,7 @@ export class ProfilesService {
       tags,
       photos,
       memberSince: formatMemberSince(profile.createdAt),
+      socialLinks: parseSocialLinks(profile.socialLinks),
       ...buildProfileLocationFields(profile.location),
       ...this.contact.buildPublicContact(profile.whatsapp, profile.displayName),
       ...this.buildPublicPricing(profile),

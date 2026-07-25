@@ -2,10 +2,7 @@ import Link from "next/link";
 
 const navItems = [
   { label: "Início", href: "/" },
-  { label: "Buscar", href: "/busca" },
   { label: "Momentos", href: "/momentos" },
-  { label: "Vídeos", href: "/videos" },
-  { label: "Rankings", href: "/rankings" },
 ];
 
 export function PublicHeader() {

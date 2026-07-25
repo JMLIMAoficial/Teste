@@ -183,6 +183,7 @@ model Profile {
   viewCount          Int                @default(0) @map("view_count")
   seoIndexable       Boolean            @default(true) @map("seo_indexable")
   whatsapp           String?            @db.VarChar(500)
+  socialLinks        Json               @default("{}") @map("social_links")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
   deletedAt          DateTime?          @map("deleted_at")

@@ -8,6 +8,7 @@ import { StorageService } from '../storage/storage.service';
 import { ContactService } from '../common/contact.service';
 import { GeocodingService } from '../common/geocoding.service';
 import { SearchService } from '../search/search.service';
+import { normalizeSocialLinks, parseSocialLinks } from '../common/social-links.util';
 import { UpdateProfileDto, UpdatePricingDto, UpdateAvailabilityDto } from './companion.dto';
 
 type ProfileRecord = {
@@ -26,6 +27,7 @@ type ProfileRecord = {
   isVerified: boolean;
   viewCount: number;
   whatsapp: string | null;
+  socialLinks: Prisma.JsonValue;
   location: {
     city: string;
     state: string;
@@ -309,6 +311,7 @@ export class CompanionService {
       memberSince: formatMemberSince(profile.createdAt),
       ...buildProfileLocationFields(profile.location),
       photos,
+      socialLinks: parseSocialLinks(profile.socialLinks),
       ...this.contact.buildPublicContact(profile.whatsapp, profile.displayName),
     };
   }
@@ -390,6 +393,9 @@ export class CompanionService {
           sexualPreference: dto.sexualPreference,
           position: dto.position,
           penisSizeCm: dto.penisSizeCm,
+          ...(dto.socialLinks !== undefined && {
+            socialLinks: normalizeSocialLinks({ ...dto.socialLinks }),
+          }),
           ...(dto.whatsapp !== undefined && { whatsapp: whatsapp ?? null }),
           ...(locationUpdate && {
             location: {
@@ -498,6 +504,7 @@ export class CompanionService {
       hasLocation: !!(profile.location?.latitude && profile.location?.longitude),
       hasWhatsApp: !!phone,
       whatsappMasked: phone ? this.contact.maskPhone(phone) : null,
+      socialLinks: parseSocialLinks(profile.socialLinks),
       tags,
       tagIds: tags.map((t) => t.id),
       photos: await Promise.all(

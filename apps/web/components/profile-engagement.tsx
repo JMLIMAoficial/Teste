@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useToast } from "@/components/toast";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -68,10 +69,10 @@ export function ProfileEngagement({
   initialSummary: { averageRating: number; reviewCount: number } | null;
   initialComments: CommentItem[];
 }) {
+  const { toast } = useToast();
   const [authorName, setAuthorName] = useState("");
   const [rating, setRating] = useState(5);
   const [text, setText] = useState("");
-  const [message, setMessage] = useState("");
 
   const items = useMemo(
     () => mergeEngagement(initialReviews, initialComments),
@@ -80,10 +81,9 @@ export function ProfileEngagement({
 
   async function submitEngagement(e: React.FormEvent) {
     e.preventDefault();
-    setMessage("");
     const trimmed = text.trim();
     if (!trimmed) {
-      setMessage("Escreva um comentário antes de enviar.");
+      toast("Escreva um comentário antes de enviar.", "error");
       return;
     }
 
@@ -101,10 +101,10 @@ export function ProfileEngagement({
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? "Erro ao enviar");
 
-      setMessage(json.message ?? "Comentário enviado para moderação.");
+      toast(json.message ?? "Comentário enviado para moderação.", "success");
       setText("");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao enviar comentário");
+      toast(err instanceof Error ? err.message : "Erro ao enviar comentário", "error");
     }
   }
 
@@ -136,12 +136,6 @@ export function ProfileEngagement({
           <p className="text-sm text-text-muted">Nenhum comentário ainda. Seja o primeiro!</p>
         )}
       </div>
-
-      {message && (
-        <p className="mt-4 rounded-xl border border-border-subtle bg-bg-tertiary p-3 text-sm text-text-secondary">
-          {message}
-        </p>
-      )}
 
       <form onSubmit={submitEngagement} className="mt-6 space-y-3 border-t border-border-subtle pt-6">
         <h3 className="text-sm font-medium text-text-primary">Deixe seu comentário</h3>

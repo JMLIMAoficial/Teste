@@ -6,8 +6,10 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Matches,
   Max,
@@ -15,8 +17,35 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { IsBrazilianState } from '../common/validators/brazilian-state.validator';
+
+export class SocialLinksDto {
+  @ValidateIf((_dto, value) => value !== undefined && value !== '')
+  @IsString()
+  @MaxLength(500)
+  @IsUrl({ protocols: ['https'], require_protocol: true }, { message: 'Link do Privacy inválido' })
+  privacy?: string;
+
+  @ValidateIf((_dto, value) => value !== undefined && value !== '')
+  @IsString()
+  @MaxLength(500)
+  @IsUrl({ protocols: ['https'], require_protocol: true }, { message: 'Link do OnlyFans inválido' })
+  onlyfans?: string;
+
+  @ValidateIf((_dto, value) => value !== undefined && value !== '')
+  @IsString()
+  @MaxLength(500)
+  @IsUrl({ protocols: ['https'], require_protocol: true }, { message: 'Link do X inválido' })
+  x?: string;
+
+  @ValidateIf((_dto, value) => value !== undefined && value !== '')
+  @IsString()
+  @MaxLength(500)
+  @IsUrl({ protocols: ['https'], require_protocol: true }, { message: 'Link do Instagram inválido' })
+  instagram?: string;
+}
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -92,6 +121,12 @@ export class UpdateProfileDto {
   @MinLength(1, { each: true })
   @MaxLength(100, { each: true })
   tagNames?: string[];
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => SocialLinksDto)
+  socialLinks?: SocialLinksDto;
 }
 
 export class UpdatePricingDto {

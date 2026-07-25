@@ -6,12 +6,34 @@ import { useEffect, useState } from "react";
 import { apiFetch, clearAccessToken, fetchMe, getAccessToken } from "@/lib/auth";
 import { getProfileCompletion, type ProfileCompletion } from "@/lib/profile-completion";
 import { uploadCompanionMoment, type OwnMomentItem } from "@/lib/moment-upload";
+import { toastToneFromMessage, useToast } from "@/components/toast";
 const PREFERENCES = ["Heterossexual", "Homossexual", "Bissexual", "Pansexual"];
 const POSITIONS = [
   { value: "active", label: "Ativo" },
   { value: "passive", label: "Passivo" },
   { value: "versatile", label: "Versátil" },
 ] as const;
+
+type SocialLinkPlatform = "privacy" | "onlyfans" | "x" | "instagram";
+type SocialLinks = Record<SocialLinkPlatform, string>;
+
+const EMPTY_SOCIAL_LINKS: SocialLinks = {
+  privacy: "",
+  onlyfans: "",
+  x: "",
+  instagram: "",
+};
+
+const SOCIAL_LINK_OPTIONS: Array<{
+  platform: SocialLinkPlatform;
+  label: string;
+  placeholder: string;
+}> = [
+  { platform: "privacy", label: "Privacy", placeholder: "https://privacy.com.br/..." },
+  { platform: "onlyfans", label: "OnlyFans", placeholder: "https://onlyfans.com/..." },
+  { platform: "x", label: "X", placeholder: "https://x.com/..." },
+  { platform: "instagram", label: "Instagram", placeholder: "https://instagram.com/..." },
+];
 
 type TagOption = { id: string; name: string; slug: string };
 
@@ -40,6 +62,7 @@ type Profile = {
   hasLocation?: boolean;
   hasWhatsApp?: boolean;
   whatsappMasked?: string | null;
+  socialLinks?: Partial<SocialLinks>;
   tagIds?: string[];
   tags?: Array<{ id: string; name: string }>;
   photos: Array<{
@@ -64,7 +87,9 @@ function mediaStatusLabel(status: string) {
   return status;
 }
 
-export function CompanionProfileEditor() {  const router = useRouter();
+export function CompanionProfileEditor() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [availableTags, setAvailableTags] = useState<TagOption[]>([]);
   const [displayName, setDisplayName] = useState("");
@@ -74,6 +99,7 @@ export function CompanionProfileEditor() {  const router = useRouter();
   const [position, setPosition] = useState("");
   const [penisSizeCm, setPenisSizeCm] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [socialLinks, setSocialLinks] = useState<SocialLinks>(EMPTY_SOCIAL_LINKS);
   const [cep, setCep] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [city, setCity] = useState("");
@@ -89,7 +115,10 @@ export function CompanionProfileEditor() {  const router = useRouter();
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
   const [ownVideos, setOwnVideos] = useState<OwnVideo[]>([]);
   const [ownMoments, setOwnMoments] = useState<OwnMomentItem[]>([]);
-  const [message, setMessage] = useState("");
+
+  function notify(message: string, tone?: "success" | "error" | "info") {
+    toast(message, tone ?? toastToneFromMessage(message));
+  }
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -133,6 +162,7 @@ export function CompanionProfileEditor() {  const router = useRouter();
       setSexualPreference(data.sexualPreference ?? "");
       setPosition(data.position ?? "");
       setPenisSizeCm(data.penisSizeCm != null ? String(data.penisSizeCm) : "");
+      setSocialLinks({ ...EMPTY_SOCIAL_LINKS, ...data.socialLinks });
       setCep(data.cep ?? "");
       setNeighborhood(data.neighborhood ?? "");
       setCity(data.city ?? "");
@@ -204,7 +234,6 @@ export function CompanionProfileEditor() {  const router = useRouter();
 
   async function saveProfile() {
     setSaving(true);
-    setMessage("");
     try {
       const data = await apiFetch<Profile>("/v1/companion/profile", {
         method: "PATCH",
@@ -217,6 +246,7 @@ export function CompanionProfileEditor() {  const router = useRouter();
           penisSizeCm: penisSizeCm ? Number(penisSizeCm) : undefined,
           tagIds: selectedTagIds,
           tagNames: customTagNames.length > 0 ? customTagNames : undefined,
+          socialLinks,
           ...(whatsapp.trim() && { whatsapp: whatsapp.trim() }),
           ...(cep.trim() && { cep: cep.trim() }),
           ...(neighborhood.trim() && { neighborhood: neighborhood.trim() }),
@@ -231,6 +261,7 @@ export function CompanionProfileEditor() {  const router = useRouter();
       setSexualPreference(data.sexualPreference ?? "");
       setPosition(data.position ?? "");
       setPenisSizeCm(data.penisSizeCm != null ? String(data.penisSizeCm) : "");
+      setSocialLinks({ ...EMPTY_SOCIAL_LINKS, ...data.socialLinks });
       setCep(data.cep ?? "");
       setNeighborhood(data.neighborhood ?? "");
       setCity(data.city ?? "");
@@ -248,9 +279,9 @@ export function CompanionProfileEditor() {  const router = useRouter();
         data.status === "pending"
           ? "Perfil salvo com sucesso! Aguardando moderação para publicação na plataforma."
           : "Perfil salvo com sucesso! As alterações já refletem no seu perfil.";
-      setMessage(data.warning ? `${successMsg} ${data.warning}` : successMsg);
+      notify(data.warning ? `${successMsg} ${data.warning}` : successMsg, data.warning ? "info" : "success");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao salvar");
+      notify(err instanceof Error ? err.message : "Erro ao salvar", "error");
     } finally {
       setSaving(false);
     }
@@ -280,13 +311,12 @@ export function CompanionProfileEditor() {  const router = useRouter();
 
   async function uploadPhoto(file: File) {
     setUploading(true);
-    setMessage("");
     try {
       await uploadMedia("/v1/companion/photos", file);
       await loadAll();
-      setMessage("Foto adicionada ao seu perfil!");
+      notify("Foto adicionada ao seu perfil!", "success");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro no upload");
+      notify(err instanceof Error ? err.message : "Erro no upload", "error");
     } finally {
       setUploading(false);
     }
@@ -300,13 +330,12 @@ export function CompanionProfileEditor() {  const router = useRouter();
 
   async function setPhotoCover(photoId: string) {
     setPhotoBusy(photoId);
-    setMessage("");
     try {
       await apiFetch(`/v1/companion/photos/${photoId}/cover`, { method: "PATCH" });
       await loadAll();
-      setMessage("Capa atualizada.");
+      notify("Capa atualizada.", "success");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao definir capa");
+      notify(err instanceof Error ? err.message : "Erro ao definir capa", "error");
     } finally {
       setPhotoBusy(null);
     }
@@ -322,7 +351,6 @@ export function CompanionProfileEditor() {  const router = useRouter();
     [next[index], next[target]] = [next[target], next[index]];
 
     setPhotoBusy(photoId);
-    setMessage("");
     try {
       await apiFetch("/v1/companion/photos/reorder", {
         method: "PATCH",
@@ -330,7 +358,7 @@ export function CompanionProfileEditor() {  const router = useRouter();
       });
       await loadAll();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao reordenar fotos");
+      notify(err instanceof Error ? err.message : "Erro ao reordenar fotos", "error");
     } finally {
       setPhotoBusy(null);
     }
@@ -340,13 +368,12 @@ export function CompanionProfileEditor() {  const router = useRouter();
     if (!confirm("Excluir esta foto?")) return;
 
     setPhotoBusy(photoId);
-    setMessage("");
     try {
       await apiFetch(`/v1/companion/photos/${photoId}`, { method: "DELETE" });
       await loadAll();
-      setMessage("Foto excluída.");
+      notify("Foto excluída.", "success");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro ao excluir foto");
+      notify(err instanceof Error ? err.message : "Erro ao excluir foto", "error");
     } finally {
       setPhotoBusy(null);
     }
@@ -354,13 +381,12 @@ export function CompanionProfileEditor() {  const router = useRouter();
 
   async function uploadVideo(file: File) {
     setUploadingVideo(true);
-    setMessage("");
     try {
       await uploadMedia("/v1/companion/videos", file);
       await loadAll();
-      setMessage("Vídeo enviado! Aguardando aprovação.");
+      notify("Vídeo enviado! Aguardando aprovação.", "success");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro no upload de vídeo");
+      notify(err instanceof Error ? err.message : "Erro no upload de vídeo", "error");
     } finally {
       setUploadingVideo(false);
     }
@@ -368,13 +394,12 @@ export function CompanionProfileEditor() {  const router = useRouter();
 
   async function uploadMoment(file: File, caption: string) {
     setUploadingMoment(true);
-    setMessage("");
     try {
       await uploadCompanionMoment(file, caption);
       await loadAll();
-      setMessage("Momento enviado! Aguardando aprovação.");
+      notify("Momento publicado!", "success");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erro no upload de momento");
+      notify(err instanceof Error ? err.message : "Erro no upload de momento", "error");
     } finally {
       setUploadingMoment(false);
     }
@@ -416,17 +441,6 @@ export function CompanionProfileEditor() {  const router = useRouter();
           </div>
         </section>
       )}
-
-      {message && (          <p
-            className={`mt-4 rounded-xl border p-3 text-sm ${
-              message.includes("sucesso")
-                ? "border-success/30 bg-success/10 text-success"
-                : "border-red-500/30 bg-red-500/10 text-red-400"
-            }`}
-          >
-            {message}
-          </p>
-        )}
 
         <section className="sticky top-0 z-20 mt-6 rounded-2xl border border-purple-deep/30 bg-bg-secondary/95 p-4 backdrop-blur sm:hidden">
           <button
@@ -723,6 +737,38 @@ export function CompanionProfileEditor() {  const router = useRouter();
             placeholder="(11) 99999-9999"
             className={`mt-3 max-w-xs ${inputClass}`}
           />
+        </section>
+
+        <section id="redes-sociais" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
+          <h2 className="text-lg font-semibold text-text-primary">Redes sociais</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Adicione links externos para criar botões no seu perfil público. Deixe em branco para
+            remover um botão.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {SOCIAL_LINK_OPTIONS.map(({ platform, label, placeholder }) => (
+              <label key={platform} className="block">
+                <span className="mb-1 block text-sm text-text-secondary">{label}</span>
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={socialLinks[platform]}
+                  onChange={(event) =>
+                    setSocialLinks((current) => ({
+                      ...current,
+                      [platform]: event.target.value,
+                    }))
+                  }
+                  placeholder={placeholder}
+                  maxLength={500}
+                  className={inputClass}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-text-muted">
+            Por segurança, cada botão aceita somente links HTTPS do site correspondente.
+          </p>
         </section>
 
         <div className="mt-6">

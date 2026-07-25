@@ -308,7 +308,7 @@ export async function fetchSeoSchema(
   }
 }
 
-export async function fetchSimilarProfiles(slug: string, limit = 8) {
+export async function fetchSimilarProfiles(slug: string, limit = 4) {
   try {
     const res = await fetch(`${API_URL}/api/v1/profiles/${slug}/similar?limit=${limit}`, {
       next: { revalidate: 120 },

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ProfilePageView } from "@/components/profile-page-view";
 import { PainelShell } from "@/components/painel-shell";
-import type { MomentItem, VideoItem } from "@/lib/api";
+import type { VideoItem } from "@/lib/api";
 import { apiFetch, getAccessToken, logout } from "@/lib/auth";
 
 type PreviewProfile = {
@@ -32,6 +32,7 @@ type PreviewProfile = {
   isVerified?: boolean;
   hasWhatsApp?: boolean;
   whatsappUrl?: string;
+  socialLinks?: Partial<Record<"privacy" | "onlyfans" | "x" | "instagram", string>>;
   id?: string;
 };
 
@@ -46,7 +47,6 @@ export default function PainelPreviewPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<PreviewProfile | null>(null);
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [moments, setMoments] = useState<MomentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,12 +57,10 @@ export default function PainelPreviewPage() {
     Promise.all([
       apiFetch<PreviewProfile>("/v1/companion/profile/preview"),
       apiFetch<{ data: VideoItem[] }>("/v1/companion/videos"),
-      apiFetch<{ data: MomentItem[] }>("/v1/companion/moments"),
     ])
-      .then(([preview, videosRes, momentsRes]) => {
+      .then(([preview, videosRes]) => {
         setProfile(preview);
         setVideos(videosRes.data ?? []);
-        setMoments(momentsRes.data ?? []);
       })
       .catch(() => router.replace("/painel"))
       .finally(() => setLoading(false));
@@ -119,9 +117,9 @@ export default function PainelPreviewPage() {
           isVerified: profile.isVerified,
           hasWhatsApp: profile.hasWhatsApp,
           whatsappUrl: profile.whatsappUrl,
+          socialLinks: profile.socialLinks,
         }}
         videos={videos}
-        moments={moments}
         reviews={[]}
         reviewSummary={null}
         comments={[]}

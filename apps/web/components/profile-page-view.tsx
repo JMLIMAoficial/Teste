@@ -2,7 +2,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { CompanionCard } from "@/components/companion-card";
 import type { CompanionCardData } from "@/lib/mock-data";
-import { HotScoreThermometer } from "@/components/hot-score-thermometer";
 import { OptimizedImage } from "@/components/optimized-image";
 import {
   ProfilePhotoGalleryProvider,
@@ -12,16 +11,7 @@ import {
 import { resolvePhotoIndex } from "@/lib/profile-photo-utils";
 import { VideoCard } from "@/components/video-card";
 import { WhatsAppButton } from "@/components/whatsapp-button";
-import type { MomentItem, VideoItem } from "@/lib/api";
-
-const MomentsFeed = dynamic(
-  () => import("@/components/moments-stories").then((m) => ({ default: m.MomentsFeed })),
-  {
-    loading: () => (
-      <div className="aspect-[9/16] max-h-[70vh] animate-pulse rounded-2xl border border-border-subtle bg-bg-secondary" />
-    ),
-  },
-);
+import type { VideoItem } from "@/lib/api";
 
 const ProfileEngagement = dynamic(
   () => import("@/components/profile-engagement").then((m) => ({ default: m.ProfileEngagement })),
@@ -42,6 +32,7 @@ const ReportContentModal = dynamic(
 );
 
 type ProfilePhoto = { id: string; url: string; isCover: boolean };
+type SocialLinks = Partial<Record<"privacy" | "onlyfans" | "x" | "instagram", string>>;
 
 export type ProfilePageData = {
   slug: string;
@@ -68,6 +59,7 @@ export type ProfilePageData = {
   isVerified?: boolean;
   hasWhatsApp?: boolean;
   whatsappUrl?: string;
+  socialLinks?: SocialLinks;
   isMock?: boolean;
   pricing?: {
     mode: "show" | "consult";
@@ -88,7 +80,6 @@ export type ProfilePageData = {
 type ProfilePageViewProps = {
   profile: ProfilePageData;
   videos: VideoItem[];
-  moments: MomentItem[];
   reviews: Array<{
     id: string;
     authorName: string;
@@ -111,12 +102,44 @@ function positionEmoji(position?: string | null) {
   return "👤";
 }
 
-function SectionHeading({ emoji, children }: { emoji: string; children: React.ReactNode }) {
+function SectionHeading({ emoji, children }: { emoji?: string; children: React.ReactNode }) {
   return (
     <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-purple-light">
-      <span aria-hidden="true">{emoji}</span>
+      {emoji ? <span aria-hidden="true">{emoji}</span> : null}
       {children}
     </h2>
+  );
+}
+
+const SOCIAL_BUTTONS = [
+  { platform: "privacy", label: "Privacy", className: "border-violet-400/40 hover:border-violet-400" },
+  { platform: "onlyfans", label: "OnlyFans", className: "border-sky-400/40 hover:border-sky-400" },
+  { platform: "x", label: "X", className: "border-text-muted/40 hover:border-text-primary" },
+  { platform: "instagram", label: "Instagram", className: "border-pink-400/40 hover:border-pink-400" },
+] as const;
+
+function SocialLinkButtons({ links }: { links?: SocialLinks }) {
+  const visibleLinks = SOCIAL_BUTTONS.filter(({ platform }) => links?.[platform]);
+  if (visibleLinks.length === 0) return null;
+
+  return (
+    <section>
+      <SectionHeading>Redes sociais</SectionHeading>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        {visibleLinks.map(({ platform, label, className }) => (
+          <a
+            key={platform}
+            href={links![platform]}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border bg-bg-secondary px-4 py-2.5 text-sm font-semibold text-text-primary transition-colors hover:bg-bg-tertiary ${className}`}
+          >
+            {label}
+            <span aria-hidden="true">↗</span>
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -220,7 +243,6 @@ function ProfileTags({ tags, className = "" }: { tags: string[]; className?: str
           key={tag}
           className="rounded-full border border-border-subtle bg-bg-primary px-3 py-1 text-sm text-text-secondary md:bg-bg-tertiary"
         >
-          <span aria-hidden="true">🏷️ </span>
           {tag}
         </span>
       ))}
@@ -258,58 +280,6 @@ function ProfilePhoto({
     <div
       className={`h-full w-full bg-gradient-to-br ${gradient ?? "from-purple-900/80 to-orange-900/60"} ${className}`}
     />
-  );
-}
-
-function ProfileTrustBlock({ profile }: { profile: ProfilePageData }) {
-  const hasTrustInfo =
-    profile.isVerified ||
-    profile.memberSince ||
-    (profile.age != null && profile.age > 0) ||
-    profile.mapUrl;
-
-  if (!hasTrustInfo) return null;
-
-  return (
-    <section className="rounded-2xl border border-border-subtle bg-bg-secondary p-4 md:p-5">
-      <SectionHeading emoji="🛡️">Confiança</SectionHeading>
-      <ul className="mt-3 space-y-2 text-sm text-text-secondary">
-        {profile.isVerified && (
-          <li className="flex items-start gap-2">
-            <span aria-hidden="true">✅</span>
-            <span>Perfil verificado</span>
-          </li>
-        )}
-        {profile.isVerified && profile.age != null && profile.age > 0 && (
-          <li className="flex items-start gap-2">
-            <span aria-hidden="true">🎂</span>
-            <span>Idade verificada: {profile.age}</span>
-          </li>
-        )}
-        {profile.memberSince && (
-          <li className="flex items-start gap-2">
-            <span aria-hidden="true">📅</span>
-            <span>Anunciante desde {profile.memberSince}</span>
-          </li>
-        )}
-        {profile.mapUrl && (
-          <li className="flex items-start gap-2">
-            <span className="text-purple-light">📍</span>
-            <span>
-              {profile.locationLabel ?? profile.city}{" "}
-              <a
-                href={profile.mapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-purple-light hover:underline"
-              >
-                ver no mapa
-              </a>
-            </span>
-          </li>
-        )}
-      </ul>
-    </section>
   );
 }
 
@@ -390,7 +360,6 @@ function ProfileWhatsAppSection({
 export function ProfilePageView({
   profile,
   videos,
-  moments,
   reviews,
   reviewSummary,
   comments,
@@ -441,16 +410,6 @@ export function ProfilePageView({
           {backLabel}
         </Link>
 
-        {profile.hotScore != null && (
-          <div className="absolute right-3 top-14 z-10 rounded-xl bg-bg-primary/90 shadow-lg md:bg-bg-primary/75 md:backdrop-blur-md">
-            <HotScoreThermometer
-              score={profile.hotScore}
-              label={profile.hotScoreLabel}
-              badge
-            />
-          </div>
-        )}
-
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <ProfileBadges profile={profile} />
           <h1 className="text-2xl font-bold text-text-primary">{profile.name}</h1>
@@ -495,15 +454,6 @@ export function ProfilePageView({
               <ProfileStats profile={profile} />
             </div>
             <ProfileMetaChips profile={profile} />
-            {profile.hotScore != null && (
-              <div className="mt-4">
-                <HotScoreThermometer
-                  score={profile.hotScore}
-                  label={profile.hotScoreLabel}
-                  badge
-                />
-              </div>
-            )}
             <ProfileTags tags={profile.tags} className="mt-4" />
             {showWhatsApp && (
               <div className="mt-5">
@@ -523,8 +473,6 @@ export function ProfilePageView({
           </p>
         )}
 
-        <ProfileTrustBlock profile={profile} />
-
         {profile.profileId && !profile.isMock && (
           <div className="flex justify-end">
             <ReportContentModal
@@ -542,54 +490,88 @@ export function ProfilePageView({
           </section>
         )}
 
+        <SocialLinkButtons links={profile.socialLinks} />
+
         {profile.pricing?.mode === "consult" && (
           <section>
-            <SectionHeading emoji="💰">Valores</SectionHeading>
-            <p className="mt-3 text-text-secondary">Consulte valores diretamente pelo WhatsApp.</p>
+            <SectionHeading>Valores</SectionHeading>
+            <p className="mt-3 text-sm text-text-secondary">Consulte pelo WhatsApp</p>
           </section>
         )}
 
         {profile.pricing?.mode === "show" && (
           <section>
-            <SectionHeading emoji="💰">Valores</SectionHeading>
-            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
+            <SectionHeading>Valores</SectionHeading>
+            <div className="mt-3 flex flex-wrap gap-2">
               {profile.pricing.thirtyMin != null && (
-                <li>30 min — R$ {profile.pricing.thirtyMin.toLocaleString("pt-BR")}</li>
+                <span className="inline-flex items-baseline gap-1.5 rounded-full border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-secondary">
+                  <span className="text-text-muted">30 min</span>
+                  <span className="font-semibold text-text-primary">
+                    R$ {profile.pricing.thirtyMin.toLocaleString("pt-BR")}
+                  </span>
+                </span>
               )}
               {profile.pricing.oneHour != null && (
-                <li>1 hora — R$ {profile.pricing.oneHour.toLocaleString("pt-BR")}</li>
+                <span className="inline-flex items-baseline gap-1.5 rounded-full border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-secondary">
+                  <span className="text-text-muted">1h</span>
+                  <span className="font-semibold text-text-primary">
+                    R$ {profile.pricing.oneHour.toLocaleString("pt-BR")}
+                  </span>
+                </span>
               )}
               {profile.pricing.twoHours != null && (
-                <li>2 horas — R$ {profile.pricing.twoHours.toLocaleString("pt-BR")}</li>
+                <span className="inline-flex items-baseline gap-1.5 rounded-full border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-secondary">
+                  <span className="text-text-muted">2h</span>
+                  <span className="font-semibold text-text-primary">
+                    R$ {profile.pricing.twoHours.toLocaleString("pt-BR")}
+                  </span>
+                </span>
               )}
               {profile.pricing.overnight != null && (
-                <li>Pernoite — R$ {profile.pricing.overnight.toLocaleString("pt-BR")}</li>
+                <span className="inline-flex items-baseline gap-1.5 rounded-full border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-secondary">
+                  <span className="text-text-muted">Pernoite</span>
+                  <span className="font-semibold text-text-primary">
+                    R$ {profile.pricing.overnight.toLocaleString("pt-BR")}
+                  </span>
+                </span>
               )}
               {(profile.pricing.customItems ?? []).map((item) => (
-                <li key={item.label}>
-                  {item.label} — R$ {item.price.toLocaleString("pt-BR")}
-                </li>
+                <span
+                  key={item.label}
+                  className="inline-flex items-baseline gap-1.5 rounded-full border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-secondary"
+                >
+                  <span className="text-text-muted">{item.label}</span>
+                  <span className="font-semibold text-text-primary">
+                    R$ {item.price.toLocaleString("pt-BR")}
+                  </span>
+                </span>
               ))}
-            </ul>
+            </div>
           </section>
         )}
 
         {(profile.availability?.length ?? 0) > 0 && (
           <section>
-            <SectionHeading emoji="🕐">Disponibilidade</SectionHeading>
-            <ul className="mt-3 space-y-1 text-sm text-text-secondary">
+            <SectionHeading>Disponibilidade</SectionHeading>
+            <div className="mt-3 flex flex-wrap gap-2">
               {profile.availability!.map((slot) => (
-                <li key={slot.dayOfWeek}>
-                  {slot.label}: {slot.startTime} – {slot.endTime}
-                </li>
+                <span
+                  key={slot.dayOfWeek}
+                  className="inline-flex items-baseline gap-1.5 rounded-full border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-secondary"
+                >
+                  <span className="font-medium text-text-primary">{slot.label}</span>
+                  <span className="text-text-muted">
+                    {slot.startTime}–{slot.endTime}
+                  </span>
+                </span>
               ))}
-            </ul>
+            </div>
           </section>
         )}
 
         {profile.tags.length > 0 && (
           <section className="md:hidden">
-            <SectionHeading emoji="🏷️">Tags</SectionHeading>
+            <SectionHeading>Tags</SectionHeading>
             <ProfileTags tags={profile.tags} className="mt-3" />
           </section>
         )}
@@ -614,20 +596,11 @@ export function ProfilePageView({
           </section>
         )}
 
-        {moments.length > 0 && (
+        {similarProfiles.length > 0 && (
           <section>
-            <SectionHeading emoji="✨">Momentos</SectionHeading>
-            <div className="mt-3">
-              <MomentsFeed moments={moments} />
-            </div>
-          </section>
-        )}
-
-        {similarProfiles.length >= 4 && (
-          <section>
-            <SectionHeading emoji="🔗">Perfis semelhantes</SectionHeading>
+            <SectionHeading>Perfis semelhantes</SectionHeading>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {similarProfiles.map((item) => (
+              {similarProfiles.slice(0, 4).map((item) => (
                 <CompanionCard key={item.slug} profile={item} />
               ))}
             </div>

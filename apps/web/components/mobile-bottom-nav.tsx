@@ -5,9 +5,7 @@ import { usePathname } from "next/navigation";
 
 const tabs = [
   { href: "/", label: "Início", icon: "🏠", exact: true },
-  { href: "/busca", label: "Buscar", icon: "🔍", exact: false },
   { href: "/momentos", label: "Momentos", icon: "✨", exact: false },
-  { href: "/rankings", label: "Rankings", icon: "🏆", exact: false },
 ] as const;
 
 const HIDDEN_PREFIXES = ["/painel", "/admin", "/login", "/cadastro"];

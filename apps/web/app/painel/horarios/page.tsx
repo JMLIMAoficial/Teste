@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PainelShell } from "@/components/painel-shell";
+import { useToast } from "@/components/toast";
 import { apiFetch, getAccessToken, logout } from "@/lib/auth";
 
 type DayRow = {
@@ -16,11 +17,10 @@ const DAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta",
 
 export default function PainelHorariosPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [days, setDays] = useState<DayRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -48,17 +48,15 @@ export default function PainelHorariosPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setError("");
-    setMessage("");
     try {
       const res = await apiFetch<{ days: DayRow[] }>("/v1/companion/availability", {
         method: "PATCH",
         body: JSON.stringify({ days }),
       });
       setDays(res.days);
-      setMessage("Horários salvos com sucesso.");
+      toast("Horários salvos com sucesso.", "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar");
+      toast(err instanceof Error ? err.message : "Erro ao salvar", "error");
     } finally {
       setSaving(false);
     }
@@ -125,9 +123,6 @@ export default function PainelHorariosPage() {
             )}
           </div>
         ))}
-
-        {message && <p className="text-sm text-success">{message}</p>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
 
         <button
           type="submit"

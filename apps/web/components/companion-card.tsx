@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { CompanionCardData } from "@/lib/mock-data";
-import { HotScoreThermometer } from "@/components/hot-score-thermometer";
 import { OptimizedImage } from "@/components/optimized-image";
 
 function positionLabel(position?: string | null) {
@@ -44,9 +43,7 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-transparent to-transparent" />
 
-        <HotScoreThermometer score={profile.hotScore} label={profile.hotScoreLabel} overlay />
-
-        <div className="absolute left-3 top-3 flex max-w-[calc(100%-3rem)] flex-wrap gap-1.5">
+        <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
           {profile.distanceKm != null && (
             <span className="rounded-full bg-bg-primary/95 px-2 py-0.5 text-[10px] font-semibold text-purple-light md:bg-bg-primary/90 md:backdrop-blur">
               {profile.distanceKm < 1
@@ -61,7 +58,7 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
           )}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-9 p-4">
+        <div className="absolute bottom-0 left-0 right-0 p-4">
           <h3 className="flex items-center gap-1.5 text-lg font-semibold text-text-primary">
             <span>{profile.name}</span>
             {profile.isFeatured && (
