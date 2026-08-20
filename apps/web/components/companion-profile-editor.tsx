@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch, clearAccessToken, fetchMe, getAccessToken } from "@/lib/auth";
 import { getProfileCompletion, type ProfileCompletion } from "@/lib/profile-completion";
-import { uploadCompanionMoment, type OwnMomentItem } from "@/lib/moment-upload";
 import { toastToneFromMessage, useToast } from "@/components/toast";
 const PREFERENCES = ["Heterossexual", "Homossexual", "Bissexual", "Pansexual"];
 const POSITIONS = [
@@ -34,6 +33,33 @@ const SOCIAL_LINK_OPTIONS: Array<{
   { platform: "x", label: "X", placeholder: "https://x.com/..." },
   { platform: "instagram", label: "Instagram", placeholder: "https://instagram.com/..." },
 ];
+
+type PricingData = {
+  pricingDisplayMode: "show" | "consult" | "hidden";
+  thirtyMin: number | null;
+  oneHour: number | null;
+  twoHours: number | null;
+  overnight: number | null;
+  customItems: Array<{ label: string; price: number }>;
+};
+
+type AvailabilityDay = {
+  dayOfWeek: number;
+  isAvailable: boolean;
+  startTime: string | null;
+  endTime: string | null;
+};
+
+const DAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+const EMPTY_PRICING: PricingData = {
+  pricingDisplayMode: "show",
+  thirtyMin: null,
+  oneHour: null,
+  twoHours: null,
+  overnight: null,
+  customItems: [],
+};
 
 type TagOption = { id: string; name: string; slug: string };
 
@@ -71,6 +97,7 @@ type Profile = {
     thumbUrl?: string;
     status: string;
     isCover: boolean;
+    isProfile?: boolean;
     sortOrder?: number;
   }>;
   completion?: ProfileCompletion;
@@ -109,12 +136,15 @@ export function CompanionProfileEditor() {
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingPricing, setSavingPricing] = useState(false);
+  const [savingAvailability, setSavingAvailability] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingRole, setUploadingRole] = useState<"profile" | "cover" | "album" | null>(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [uploadingMoment, setUploadingMoment] = useState(false);
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
   const [ownVideos, setOwnVideos] = useState<OwnVideo[]>([]);
-  const [ownMoments, setOwnMoments] = useState<OwnMomentItem[]>([]);
+  const [pricing, setPricing] = useState<PricingData>(EMPTY_PRICING);
+  const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([]);
 
   function notify(message: string, tone?: "success" | "error" | "info") {
     toast(message, tone ?? toastToneFromMessage(message));
@@ -143,18 +173,20 @@ export function CompanionProfileEditor() {
         return;
       }
 
-      const [data, tagsRes, videosRes, momentsRes] = await Promise.all([
+      const [data, tagsRes, videosRes, pricingRes, availabilityRes] = await Promise.all([
         apiFetch<Profile>("/v1/companion/profile"),
         fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1/tags`).then(
           (r) => (r.ok ? r.json() : { data: [] }),
         ),
         apiFetch<{ data: OwnVideo[] }>("/v1/companion/videos"),
-        apiFetch<{ data: OwnMomentItem[] }>("/v1/companion/moments"),
+        apiFetch<PricingData>("/v1/companion/pricing"),
+        apiFetch<{ days: AvailabilityDay[] }>("/v1/companion/availability"),
       ]);
 
       setProfile(data);
       setOwnVideos(videosRes.data ?? []);
-      setOwnMoments(momentsRes.data ?? []);
+      setPricing(pricingRes ?? EMPTY_PRICING);
+      setAvailabilityDays(availabilityRes.days ?? []);
       setAvailableTags(tagsRes.data ?? []);
       setDisplayName(data.displayName ?? "");
       setBirthDate(data.birthDate ?? "");
@@ -287,7 +319,47 @@ export function CompanionProfileEditor() {
     }
   }
 
-  async function uploadMedia(endpoint: string, file: File, extra?: Record<string, string>) {
+  async function savePricing() {
+    setSavingPricing(true);
+    try {
+      const updated = await apiFetch<PricingData>("/v1/companion/pricing", {
+        method: "PATCH",
+        body: JSON.stringify(pricing),
+      });
+      setPricing(updated);
+      notify("Valores salvos com sucesso.", "success");
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Erro ao salvar valores", "error");
+    } finally {
+      setSavingPricing(false);
+    }
+  }
+
+  function updateAvailabilityDay(index: number, patch: Partial<AvailabilityDay>) {
+    setAvailabilityDays((prev) => prev.map((day, i) => (i === index ? { ...day, ...patch } : day)));
+  }
+
+  async function saveAvailability() {
+    setSavingAvailability(true);
+    try {
+      const res = await apiFetch<{ days: AvailabilityDay[] }>("/v1/companion/availability", {
+        method: "PATCH",
+        body: JSON.stringify({ days: availabilityDays }),
+      });
+      setAvailabilityDays(res.days);
+      notify("Horários salvos com sucesso.", "success");
+    } catch (err) {
+      notify(err instanceof Error ? err.message : "Erro ao salvar horários", "error");
+    } finally {
+      setSavingAvailability(false);
+    }
+  }
+
+  async function uploadMedia(
+    endpoint: string,
+    file: File,
+    extra?: Record<string, string>,
+  ) {
     const form = new FormData();
     form.append("file", file);
     if (extra) {
@@ -309,16 +381,25 @@ export function CompanionProfileEditor() {
     }
   }
 
-  async function uploadPhoto(file: File) {
+  async function uploadPhoto(file: File, role: "profile" | "cover" | "album" = "album") {
     setUploading(true);
+    setUploadingRole(role);
     try {
-      await uploadMedia("/v1/companion/photos", file);
+      await uploadMedia("/v1/companion/photos", file, { role });
       await loadAll();
-      notify("Foto adicionada ao seu perfil!", "success");
+      notify(
+        role === "profile"
+          ? "Foto de perfil atualizada!"
+          : role === "cover"
+            ? "Foto de capa atualizada!"
+            : "Foto adicionada ao álbum!",
+        "success",
+      );
     } catch (err) {
       notify(err instanceof Error ? err.message : "Erro no upload", "error");
     } finally {
       setUploading(false);
+      setUploadingRole(null);
     }
   }
 
@@ -328,33 +409,40 @@ export function CompanionProfileEditor() {
     );
   }
 
-  async function setPhotoCover(photoId: string) {
-    setPhotoBusy(photoId);
-    try {
-      await apiFetch(`/v1/companion/photos/${photoId}/cover`, { method: "PATCH" });
-      await loadAll();
-      notify("Capa atualizada.", "success");
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Erro ao definir capa", "error");
-    } finally {
-      setPhotoBusy(null);
-    }
+  function profilePhoto() {
+    return sortedPhotos().find((p) => p.isProfile) ?? null;
+  }
+
+  function coverPhoto() {
+    return sortedPhotos().find((p) => p.isCover) ?? null;
+  }
+
+  function albumPhotos() {
+    return sortedPhotos().filter((p) => !p.isProfile && !p.isCover);
   }
 
   async function movePhoto(photoId: string, direction: -1 | 1) {
-    const photos = sortedPhotos();
-    const index = photos.findIndex((p) => p.id === photoId);
+    const album = albumPhotos();
+    const index = album.findIndex((p) => p.id === photoId);
     const target = index + direction;
-    if (index < 0 || target < 0 || target >= photos.length) return;
+    if (index < 0 || target < 0 || target >= album.length) return;
 
-    const next = [...photos];
-    [next[index], next[target]] = [next[target], next[index]];
+    const nextAlbum = [...album];
+    [nextAlbum[index], nextAlbum[target]] = [nextAlbum[target], nextAlbum[index]];
+
+    const featuredIds = new Set(
+      sortedPhotos()
+        .filter((p) => p.isProfile || p.isCover)
+        .map((p) => p.id),
+    );
+    const featured = sortedPhotos().filter((p) => featuredIds.has(p.id));
+    const photoIds = [...featured.map((p) => p.id), ...nextAlbum.map((p) => p.id)];
 
     setPhotoBusy(photoId);
     try {
       await apiFetch("/v1/companion/photos/reorder", {
         method: "PATCH",
-        body: JSON.stringify({ photoIds: next.map((p) => p.id) }),
+        body: JSON.stringify({ photoIds }),
       });
       await loadAll();
     } catch (err) {
@@ -392,19 +480,6 @@ export function CompanionProfileEditor() {
     }
   }
 
-  async function uploadMoment(file: File, caption: string) {
-    setUploadingMoment(true);
-    try {
-      await uploadCompanionMoment(file, caption);
-      await loadAll();
-      notify("Momento publicado!", "success");
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Erro no upload de momento", "error");
-    } finally {
-      setUploadingMoment(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg-primary text-text-secondary">
@@ -420,7 +495,7 @@ export function CompanionProfileEditor() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text-primary">Editar perfil</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Atualize seus dados, complete o perfil e envie fotos e mídia.
+          Atualize seus dados, valores, horários, fotos e mídia.
         </p>
       </div>
 
@@ -491,11 +566,114 @@ export function CompanionProfileEditor() {
         </section>
 
         <section id="completar" className="mt-8 scroll-mt-24 rounded-2xl border border-purple-deep/20 bg-bg-secondary p-6">
-          <h2 className="text-lg font-semibold text-text-primary">Completar perfil</h2>          <p className="mt-1 text-sm text-text-muted">
-            Preferência, posição, dote e tags — preenchidos após o cadastro inicial.
+          <h2 className="text-lg font-semibold text-text-primary">Completar perfil</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Fotos principais, preferência, posição, dote e tags — preenchidos após o cadastro inicial.
           </p>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div
+            id="fotos-principais"
+            className="mt-5 scroll-mt-24 rounded-2xl border border-gold/40 bg-gold/10 p-4 sm:p-5"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gold">
+                  Essencial para aparecer
+                </p>
+                <h3 className="mt-1 text-base font-semibold text-text-primary">Fotos principais</h3>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-gold/25 bg-bg-primary/50 p-4">
+                <div className="flex items-start gap-4">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-gold/50 bg-bg-tertiary">
+                    {profilePhoto() ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={profilePhoto()!.thumbUrl ?? profilePhoto()!.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-2xl text-text-muted">
+                        ?
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-text-primary">Foto de perfil</p>
+                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                      Aparece nos cards da home e nas listagens.
+                    </p>
+                    <label className="mt-3 inline-flex cursor-pointer rounded-xl bg-purple-deep px-4 py-2 text-sm font-medium text-white hover:bg-purple-light">
+                      {uploadingRole === "profile"
+                        ? "Enviando..."
+                        : profilePhoto()
+                          ? "Trocar foto de perfil"
+                          : "Adicionar foto de perfil"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={uploading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (file) uploadPhoto(file, "profile");
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gold/25 bg-bg-primary/50 p-4">
+                <div className="space-y-3">
+                  <div className="relative aspect-[16/9] overflow-hidden rounded-xl border border-border-subtle bg-bg-tertiary">
+                    {coverPhoto() ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={coverPhoto()!.thumbUrl ?? coverPhoto()!.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm text-text-muted">
+                        Sem capa
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-text-primary">Foto de capa</p>
+                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                      Aparece no topo da página pública do seu perfil. Prefira uma imagem mais larga.
+                    </p>
+                    <label className="mt-3 inline-flex cursor-pointer rounded-xl border border-border-subtle bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-primary hover:border-purple-deep/40">
+                      {uploadingRole === "cover"
+                        ? "Enviando..."
+                        : coverPhoto()
+                          ? "Trocar foto de capa"
+                          : "Adicionar foto de capa"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        disabled={uploading}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (file) uploadPhoto(file, "cover");
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm text-text-secondary">Preferência sexual</label>
               <select
@@ -771,6 +949,142 @@ export function CompanionProfileEditor() {
           </p>
         </section>
 
+        <section id="valores" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
+          <h2 className="text-lg font-semibold text-text-primary">Valores</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Defina seus preços e como eles aparecem no perfil público.
+          </p>
+
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-text-primary">Exibição no perfil</h3>
+            <p className="mt-1 text-sm text-text-secondary">
+              Deseja exibir o valor cobrado por hora?
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(
+                [
+                  { value: "show", label: "Mostrar valores" },
+                  { value: "consult", label: "Consultar" },
+                  { value: "hidden", label: "Ocultar" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() =>
+                    setPricing((current) => ({ ...current, pricingDisplayMode: opt.value }))
+                  }
+                  className={`rounded-xl border px-4 py-2 text-sm ${
+                    pricing.pricingDisplayMode === opt.value
+                      ? "border-purple-deep bg-purple-deep/20 text-purple-light"
+                      : "border-border-subtle text-text-secondary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {pricing.pricingDisplayMode === "show" && (
+            <div className="mt-5">
+              <h3 className="text-sm font-medium text-text-primary">Tabela de preços (R$)</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {(
+                  [
+                    ["thirtyMin", "30 minutos"],
+                    ["oneHour", "1 hora"],
+                    ["twoHours", "2 horas"],
+                    ["overnight", "Pernoite"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="block">
+                    <span className="mb-1 block text-sm text-text-secondary">{label}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      className={inputClass}
+                      value={pricing[key] ?? ""}
+                      onChange={(e) =>
+                        setPricing((current) => ({
+                          ...current,
+                          [key]: e.target.value ? Number(e.target.value) : null,
+                        }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={savePricing}
+            disabled={savingPricing}
+            className="mt-5 rounded-xl bg-purple-deep px-6 py-3 text-sm font-medium text-white hover:bg-purple-light disabled:opacity-50"
+          >
+            {savingPricing ? "Salvando..." : "Salvar valores"}
+          </button>
+        </section>
+
+        <section id="horarios" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
+          <h2 className="text-lg font-semibold text-text-primary">Horários</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Informe quando você costuma estar disponível. Visitantes veem isso no perfil público.
+          </p>
+
+          <div className="mt-4 space-y-3">
+            {availabilityDays.map((day, index) => (
+              <div
+                key={day.dayOfWeek}
+                className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-bg-tertiary p-4 sm:flex-row sm:items-center"
+              >
+                <label className="flex min-w-[140px] items-center gap-2 text-sm text-text-primary">
+                  <input
+                    type="checkbox"
+                    checked={day.isAvailable}
+                    onChange={(e) =>
+                      updateAvailabilityDay(index, {
+                        isAvailable: e.target.checked,
+                        startTime: e.target.checked ? day.startTime ?? "10:00" : null,
+                        endTime: e.target.checked ? day.endTime ?? "22:00" : null,
+                      })
+                    }
+                  />
+                  {DAY_LABELS[day.dayOfWeek]}
+                </label>
+                {day.isAvailable && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="time"
+                      value={day.startTime ?? ""}
+                      onChange={(e) => updateAvailabilityDay(index, { startTime: e.target.value })}
+                      className="rounded-xl border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary"
+                    />
+                    <span className="text-text-muted">até</span>
+                    <input
+                      type="time"
+                      value={day.endTime ?? ""}
+                      onChange={(e) => updateAvailabilityDay(index, { endTime: e.target.value })}
+                      className="rounded-xl border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={saveAvailability}
+            disabled={savingAvailability}
+            className="mt-5 rounded-xl bg-purple-deep px-6 py-3 text-sm font-medium text-white hover:bg-purple-light disabled:opacity-50"
+          >
+            {savingAvailability ? "Salvando..." : "Salvar horários"}
+          </button>
+        </section>
+
         <div className="mt-6">
           <button
             onClick={saveProfile}
@@ -796,15 +1110,20 @@ export function CompanionProfileEditor() {
         </div>
 
         <section id="fotos" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
-          <h2 className="text-lg font-semibold text-text-primary">Fotos</h2>          <p className="mt-1 text-sm text-text-muted">
-            Suas fotos aparecem na prévia e no perfil assim que enviadas. Defina qual é a capa nos cards.
+          <h2 className="text-lg font-semibold text-text-primary">Álbum de fotos</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Fotos extras da galeria pública. A foto de perfil e a foto de capa ficam em{" "}
+            <a href="#fotos-principais" className="text-purple-light hover:underline">
+              Completar perfil
+            </a>
+            .
             {profile?.status !== "approved" || !profile?.isPublic ? (
               <> A visibilidade na busca depende da moderação do perfil.</>
             ) : null}
           </p>
 
           <label className="mt-4 inline-flex cursor-pointer rounded-xl border border-dashed border-border-subtle px-6 py-4 text-sm text-text-secondary hover:border-purple-deep">
-            {uploading ? "Enviando..." : "Selecionar foto"}
+            {uploadingRole === "album" ? "Enviando..." : "Adicionar ao álbum"}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -812,14 +1131,15 @@ export function CompanionProfileEditor() {
               disabled={uploading}
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) uploadPhoto(file);
+                e.target.value = "";
+                if (file) uploadPhoto(file, "album");
               }}
             />
           </label>
 
-          {sortedPhotos().length > 0 && (
+          {albumPhotos().length > 0 ? (
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {sortedPhotos().map((photo, index, photos) => (
+              {albumPhotos().map((photo, index, photos) => (
                 <div key={photo.id} className="overflow-hidden rounded-xl border border-border-subtle">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -828,20 +1148,8 @@ export function CompanionProfileEditor() {
                     className="aspect-[3/4] w-full object-cover"
                   />
                   <div className="space-y-2 p-2">
-                    <p className="text-center text-xs text-text-muted">
-                      {photo.isCover ? "Capa" : "No perfil"}
-                    </p>
+                    <p className="text-center text-xs text-text-muted">Álbum</p>
                     <div className="flex flex-wrap justify-center gap-1">
-                      {!photo.isCover && (
-                        <button
-                          type="button"
-                          disabled={photoBusy === photo.id}
-                          onClick={() => setPhotoCover(photo.id)}
-                          className="rounded-lg border border-border-subtle px-2 py-1 text-[10px] text-text-secondary hover:border-purple-deep/40"
-                        >
-                          Capa
-                        </button>
-                      )}
                       <button
                         type="button"
                         disabled={photoBusy === photo.id || index === 0}
@@ -871,6 +1179,10 @@ export function CompanionProfileEditor() {
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="mt-4 text-sm text-text-muted">
+              Nenhuma foto no álbum ainda. As fotos principais ficam acima, em Completar perfil.
+            </p>
           )}
         </section>
 
@@ -907,84 +1219,6 @@ export function CompanionProfileEditor() {
                 </li>
               ))}
             </ul>
-          )}
-        </section>
-
-        <section id="momentos" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-text-primary">Momentos</h2>
-              <p className="mt-1 text-sm text-text-muted">
-                Fotos e vídeos curtos no feed — quanto mais você publica, mais visibilidade ganha.
-              </p>
-            </div>
-            <Link
-              href="/painel/momentos"
-              className="text-sm text-purple-light hover:underline"
-            >
-              Ver estatísticas →
-            </Link>
-          </div>
-          <p className="mt-3 rounded-xl border border-purple-deep/20 bg-purple-deep/5 px-4 py-3 text-sm text-text-secondary">
-            Dica: use o botão <strong>+</strong> flutuante em qualquer tela do painel para publicar
-            rapidamente, ou selecione abaixo.
-          </p>
-          <label className="mt-4 inline-flex cursor-pointer rounded-xl border border-dashed border-border-subtle px-6 py-4 text-sm text-text-secondary hover:border-purple-deep">
-            {uploadingMoment ? "Enviando..." : "Selecionar momento"}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-              className="hidden"
-              disabled={uploadingMoment}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const caption = prompt("Legenda (opcional):") ?? "";
-                  uploadMoment(file, caption);
-                }
-              }}
-            />
-          </label>
-          {ownMoments.length > 0 && (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {ownMoments.map((moment) => {
-                const isVideo =
-                  moment.mediaType === "video" || moment.mimeType?.startsWith("video/");
-                return (
-                  <div
-                    key={moment.id}
-                    className="overflow-hidden rounded-xl border border-border-subtle bg-bg-tertiary"
-                  >
-                    <div className="relative aspect-video bg-bg-primary">
-                      {isVideo ? (
-                        <video
-                          src={moment.url}
-                          className="h-full w-full object-cover"
-                          controls
-                          playsInline
-                        />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={moment.url} alt="" className="h-full w-full object-cover" />
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="truncate text-sm text-text-primary">
-                        {moment.caption || "Sem legenda"}
-                      </p>
-                      <p className="mt-1 text-xs text-text-muted">
-                        {mediaStatusLabel(moment.status)} ·{" "}
-                        {new Date(moment.createdAt).toLocaleDateString("pt-BR")}
-                      </p>
-                      <p className="mt-2 text-xs text-text-secondary">
-                        👁 {moment.viewCount} · ♥ {moment.likeCount}
-                        {moment.commentCount > 0 ? ` · 💬 ${moment.commentCount}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           )}
         </section>
     </>

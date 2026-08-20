@@ -31,10 +31,10 @@ export class RegisterDto {
   @IsDateString()
   birthDate!: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(20, { message: 'A biografia deve ter pelo menos 20 caracteres' })
   @MaxLength(1000)
-  bio!: string;
+  bio?: string;
 
   @IsOptional()
   @IsString()

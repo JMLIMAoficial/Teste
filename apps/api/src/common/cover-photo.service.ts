@@ -4,6 +4,7 @@ import { PhotoUrls, StorageService } from '../storage/storage.service';
 
 type PhotoWithAsset = {
   isCover: boolean;
+  isProfile?: boolean;
   sortOrder: number;
   mediaAsset: { storagePath: string };
 };
@@ -15,14 +16,28 @@ export class CoverPhotoService {
     private readonly storage: StorageService,
   ) {}
 
+  /** Foto usada nos cards / listagens (perfil). */
   pickCoverStoragePath(photos: PhotoWithAsset[]): string | undefined {
-    const cover = photos
-      .slice()
-      .sort((a, b) => {
-        if (a.isCover !== b.isCover) return a.isCover ? -1 : 1;
-        return a.sortOrder - b.sortOrder;
-      })[0];
-    return cover?.mediaAsset.storagePath;
+    const ranked = photos.slice().sort((a, b) => {
+      const aProfile = a.isProfile ? 1 : 0;
+      const bProfile = b.isProfile ? 1 : 0;
+      if (aProfile !== bProfile) return bProfile - aProfile;
+      if (a.isCover !== b.isCover) return a.isCover ? -1 : 1;
+      return a.sortOrder - b.sortOrder;
+    });
+    return ranked[0]?.mediaAsset.storagePath;
+  }
+
+  /** Foto usada no topo da página pública (capa). */
+  pickBannerStoragePath(photos: PhotoWithAsset[]): string | undefined {
+    const ranked = photos.slice().sort((a, b) => {
+      if (a.isCover !== b.isCover) return a.isCover ? -1 : 1;
+      const aProfile = a.isProfile ? 1 : 0;
+      const bProfile = b.isProfile ? 1 : 0;
+      if (aProfile !== bProfile) return bProfile - aProfile;
+      return a.sortOrder - b.sortOrder;
+    });
+    return ranked[0]?.mediaAsset.storagePath;
   }
 
   async resolveCoverPhotoMap(profileIds: string[]): Promise<Map<string, PhotoUrls>> {
@@ -31,7 +46,7 @@ export class CoverPhotoService {
     const photos = await this.prisma.photo.findMany({
       where: { profileId: { in: profileIds }, status: 'approved' },
       include: { mediaAsset: true },
-      orderBy: [{ isCover: 'desc' }, { sortOrder: 'asc' }],
+      orderBy: [{ isProfile: 'desc' }, { isCover: 'desc' }, { sortOrder: 'asc' }],
     });
 
     const profilePaths = new Map<string, string>();

@@ -9,7 +9,7 @@ import { isValidBrazilianState } from "@/lib/brazilian-states";
 const inputClass =
   "w-full rounded-xl border border-border-subtle bg-bg-secondary px-4 py-3 text-text-primary focus:border-purple-deep focus:outline-none";
 
-const STEPS = ["Acesso", "Dados", "Localização", "Biografia", "Revisão"];
+const STEPS = ["Acesso", "Dados", "Localização"];
 
 function isAtLeast18(birthDate: string): boolean {
   const birth = new Date(birthDate);
@@ -29,7 +29,6 @@ export function RegistrationWizard() {
     password: "",
     displayName: "",
     birthDate: "",
-    bio: "",
     city: "",
     state: "SP",
   });
@@ -54,9 +53,6 @@ export function RegistrationWizard() {
       if (!form.city.trim()) return "Informe a cidade";
       if (!isValidBrazilianState(form.state)) return "UF inválida (ex: SP, RJ)";
     }
-    if (index === 3) {
-      if (form.bio.trim().length < 20) return "A biografia deve ter pelo menos 20 caracteres";
-    }
     return null;
   }
 
@@ -76,7 +72,7 @@ export function RegistrationWizard() {
   }
 
   async function handleSubmit() {
-    const err = validateStep(3);
+    const err = validateStep(2);
     if (err) {
       setError(err);
       return;
@@ -91,7 +87,6 @@ export function RegistrationWizard() {
         city: form.city,
         state: form.state.toUpperCase(),
         birthDate: form.birthDate,
-        bio: form.bio.trim(),
       });
       router.push("/painel");
     } catch (err) {
@@ -174,62 +169,30 @@ export function RegistrationWizard() {
       )}
 
       {step === 2 && (
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <label className="mb-1 block text-sm text-text-secondary">Cidade</label>
-            <input
-              required
-              value={form.city}
-              onChange={(e) => update("city", e.target.value)}
-              className={inputClass}
-            />
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="mb-1 block text-sm text-text-secondary">Cidade</label>
+              <input
+                required
+                value={form.city}
+                onChange={(e) => update("city", e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-text-secondary">UF</label>
+              <input
+                required
+                maxLength={2}
+                value={form.state}
+                onChange={(e) => update("state", e.target.value.toUpperCase())}
+                className={inputClass}
+              />
+            </div>
           </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-secondary">UF</label>
-            <input
-              required
-              maxLength={2}
-              value={form.state}
-              onChange={(e) => update("state", e.target.value.toUpperCase())}
-              className={inputClass}
-            />
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div>
-          <label className="mb-1 block text-sm text-text-secondary">Descrição / biografia</label>
-          <textarea
-            required
-            minLength={20}
-            maxLength={1000}
-            rows={5}
-            value={form.bio}
-            onChange={(e) => update("bio", e.target.value)}
-            placeholder="Conte sobre você, serviços e o que te diferencia..."
-            className={inputClass}
-          />
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="space-y-3 rounded-2xl border border-border-subtle bg-bg-secondary p-4 text-sm text-text-secondary">
-          <p>
-            <strong className="text-text-primary">Email:</strong> {form.email}
-          </p>
-          <p>
-            <strong className="text-text-primary">Nome:</strong> {form.displayName}
-          </p>
-          <p>
-            <strong className="text-text-primary">Local:</strong> {form.city}, {form.state}
-          </p>
-          <p>
-            <strong className="text-text-primary">Bio:</strong> {form.bio.slice(0, 120)}
-            {form.bio.length > 120 ? "…" : ""}
-          </p>
           <p className="text-xs text-text-muted">
-            Depois do cadastro, complete fotos, WhatsApp, tags e valores no painel.
+            Depois do cadastro, complete biografia, fotos, WhatsApp, tags e valores no painel.
           </p>
         </div>
       )}

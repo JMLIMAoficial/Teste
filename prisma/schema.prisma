@@ -298,6 +298,7 @@ model Photo {
   status       PhotoStatus @default(pending)
   sortOrder    Int         @default(0) @map("sort_order") @db.SmallInt
   isCover      Boolean     @default(false) @map("is_cover")
+  isProfile    Boolean     @default(false) @map("is_profile")
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
 

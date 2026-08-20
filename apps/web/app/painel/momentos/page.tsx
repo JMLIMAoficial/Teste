@@ -79,7 +79,7 @@ export default function PainelMomentosPage() {
             inferior para enviar sua primeira foto — quanto mais conteúdo, mais chances de ser visto.
           </p>
           <Link
-            href="/painel/perfil#fotos"
+            href="/painel/perfil#fotos-principais"
             className="mt-4 inline-block text-sm text-purple-light hover:underline"
           >
             Também complete suas fotos de perfil →

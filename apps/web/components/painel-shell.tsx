@@ -16,8 +16,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/painel", label: "Visão geral", short: "Início" },
   { href: "/painel/momentos", label: "Momentos", short: "Momentos" },
   { href: "/painel/perfil", label: "Editar perfil", short: "Perfil" },
-  { href: "/painel/valores", label: "Valores", short: "Valores" },
-  { href: "/painel/horarios", label: "Horários", short: "Horários" },
   { href: "/painel/verificacao", label: "Verificação", short: "Verif." },
   { href: "/painel/notificacoes", label: "Notificações", short: "Alertas" },
   { href: "/painel/mensagens", label: "Mensagens", short: "Mensagens", hint: "Administração" },

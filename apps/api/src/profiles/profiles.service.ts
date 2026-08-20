@@ -293,8 +293,10 @@ export class ProfilesService {
       .filter(Boolean);
 
     const hs = await this.prisma.hotScore.findUnique({ where: { profileId: profile.id } });
-    const coverPath = this.coverPhoto.pickCoverStoragePath(profile.photos);
+    const coverPath = this.coverPhoto.pickBannerStoragePath(profile.photos);
     const coverUrls = coverPath ? await this.storage.resolvePhotoUrls(coverPath) : null;
+    const profilePath = this.coverPhoto.pickCoverStoragePath(profile.photos);
+    const profileUrls = profilePath ? await this.storage.resolvePhotoUrls(profilePath) : null;
     const card = toPublicCard({
       slug: profile.slug,
       displayName: profile.displayName,
@@ -311,8 +313,9 @@ export class ProfilesService {
       location: profile.location,
       penisSizeCm: profile.penisSizeCm,
       position: profile.position,
-      coverPhotoUrl: coverUrls?.coverPhotoUrl ?? null,
-      coverPhotoThumbUrl: coverUrls?.coverPhotoThumbUrl ?? null,
+      coverPhotoUrl: profileUrls?.coverPhotoUrl ?? coverUrls?.coverPhotoUrl ?? null,
+      coverPhotoThumbUrl:
+        profileUrls?.coverPhotoThumbUrl ?? coverUrls?.coverPhotoThumbUrl ?? null,
       isVerified: profile.isVerified,
     });
 
@@ -325,6 +328,7 @@ export class ProfilesService {
           url: urls.coverPhotoUrl,
           thumbUrl: urls.coverPhotoThumbUrl,
           isCover: p.isCover,
+          isProfile: p.isProfile,
         };
       }),
     );
@@ -339,6 +343,8 @@ export class ProfilesService {
       penisSizeCm: profile.penisSizeCm,
       tags,
       photos,
+      coverPhotoUrl: coverUrls?.coverPhotoUrl ?? profileUrls?.coverPhotoUrl ?? null,
+      coverPhotoThumbUrl: coverUrls?.coverPhotoThumbUrl ?? profileUrls?.coverPhotoThumbUrl ?? null,
       memberSince: formatMemberSince(profile.createdAt),
       socialLinks: parseSocialLinks(profile.socialLinks),
       ...buildProfileLocationFields(profile.location),

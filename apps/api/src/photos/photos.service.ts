@@ -5,6 +5,8 @@ import { SearchService } from '../search/search.service';
 import { ImageVariantsService, mediumStoragePath, thumbStoragePath } from '../storage/image-variants.service';
 import { StorageService } from '../storage/storage.service';
 
+export type PhotoRole = 'profile' | 'cover' | 'album';
+
 @Injectable()
 export class PhotosService {
   constructor(
@@ -14,7 +16,7 @@ export class PhotosService {
     private readonly search: SearchService,
   ) {}
 
-  async uploadForUser(userId: string, file: Express.Multer.File) {
+  async uploadForUser(userId: string, file: Express.Multer.File, role: PhotoRole = 'album') {
     if (!file) {
       throw new BadRequestException('Arquivo obrigatório');
     }
@@ -60,17 +62,34 @@ export class PhotosService {
       },
     });
 
-    const isFirst = photoCount === 0;
+    const asProfile = role === 'profile';
+    const asCover = role === 'cover';
 
-    const photo = await this.prisma.photo.create({
-      data: {
-        profileId: profile.id,
-        mediaAssetId: asset.id,
-        status: 'approved',
-        sortOrder: photoCount,
-        isCover: isFirst,
-      },
-      include: { mediaAsset: true },
+    const photo = await this.prisma.$transaction(async (tx) => {
+      if (asProfile) {
+        await tx.photo.updateMany({
+          where: { profileId: profile.id },
+          data: { isProfile: false },
+        });
+      }
+      if (asCover) {
+        await tx.photo.updateMany({
+          where: { profileId: profile.id },
+          data: { isCover: false },
+        });
+      }
+
+      return tx.photo.create({
+        data: {
+          profileId: profile.id,
+          mediaAssetId: asset.id,
+          status: 'approved',
+          sortOrder: photoCount,
+          isProfile: asProfile,
+          isCover: asCover,
+        },
+        include: { mediaAsset: true },
+      });
     });
 
     const urls = await this.storage.resolvePhotoUrls(photo.mediaAsset.storagePath);
@@ -79,6 +98,7 @@ export class PhotosService {
       id: photo.id,
       status: photo.status,
       isCover: photo.isCover,
+      isProfile: photo.isProfile,
       url: urls.coverPhotoUrl,
       thumbUrl: urls.coverPhotoThumbUrl,
     };
@@ -94,12 +114,30 @@ export class PhotosService {
       }),
       this.prisma.photo.update({
         where: { id: photoId },
-        data: { isCover: true },
+        data: { isCover: true, isProfile: false },
       }),
     ]);
 
     await this.reindexIfPublic(photo.profileId);
-    return { id: photoId, isCover: true };
+    return { id: photoId, isCover: true, isProfile: false };
+  }
+
+  async setProfile(userId: string, photoId: string) {
+    const photo = await this.getOwnedPhoto(userId, photoId);
+
+    await this.prisma.$transaction([
+      this.prisma.photo.updateMany({
+        where: { profileId: photo.profileId },
+        data: { isProfile: false },
+      }),
+      this.prisma.photo.update({
+        where: { id: photoId },
+        data: { isProfile: true, isCover: false },
+      }),
+    ]);
+
+    await this.reindexIfPublic(photo.profileId);
+    return { id: photoId, isProfile: true, isCover: false };
   }
 
   async reorderPhotos(userId: string, photoIds: string[]) {
@@ -148,22 +186,38 @@ export class PhotosService {
       return { deleted: true };
     }
 
-    const hasCover = remaining.some((p) => p.isCover);
-    if (!hasCover) {
-      await this.prisma.photo.update({
-        where: { id: remaining[0].id },
-        data: { isCover: true },
-      });
+    const updates: Array<ReturnType<typeof this.prisma.photo.update>> = [];
+
+    if (!remaining.some((p) => p.isProfile)) {
+      updates.push(
+        this.prisma.photo.update({
+          where: { id: remaining[0].id },
+          data: { isProfile: true },
+        }),
+      );
     }
 
-    await this.prisma.$transaction(
-      remaining.map((p, index) =>
+    if (!remaining.some((p) => p.isCover)) {
+      updates.push(
+        this.prisma.photo.update({
+          where: { id: remaining[0].id },
+          data: { isCover: true },
+        }),
+      );
+    }
+
+    remaining.forEach((p, index) => {
+      updates.push(
         this.prisma.photo.update({
           where: { id: p.id },
           data: { sortOrder: index },
         }),
-      ),
-    );
+      );
+    });
+
+    if (updates.length > 0) {
+      await this.prisma.$transaction(updates);
+    }
 
     await this.reindexIfPublic(photo.profileId);
     return { deleted: true };

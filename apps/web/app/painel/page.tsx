@@ -38,7 +38,8 @@ const SECTION_BY_KEY: Record<string, string> = {
   tags: "completar",
   location: "localizacao",
   cep: "localizacao",
-  photo: "fotos",
+  photo: "fotos-principais",
+  cover: "fotos-principais",
   whatsapp: "whatsapp",
 };
 
@@ -162,18 +163,73 @@ export default function PainelDashboardPage() {
     profile.photos[0]?.thumbUrl ??
     profile.photos[0]?.url;
   const locationLabel = [profile.city, profile.state].filter(Boolean).join(", ");
-  const pendingChecks = completion.checks.filter((c) => !c.done).slice(0, 4);
+  const pendingChecks = completion.checks.filter((c) => !c.done);
+  const showNextSteps = pendingChecks.length > 0;
 
   return (
     <PainelShell onLogout={handleLogout}>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-text-primary">Olá, {profile.displayName}</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Acompanhe seu perfil, complete o cadastro e acesse as ferramentas do painel.
+          {showNextSteps
+            ? "Complete os próximos passos para deixar seu perfil pronto para publicação."
+            : "Acompanhe seu perfil e acesse as ferramentas do painel."}
         </p>
       </div>
 
-      <section className="rounded-2xl border border-border-subtle bg-bg-secondary p-5 sm:p-6">
+      {showNextSteps && (
+        <section className="rounded-2xl border border-gold/40 bg-gold/10 p-5 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gold">
+                Comece por aqui
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-text-primary">Próximos passos</h2>
+              <p className="mt-1 text-sm text-text-secondary">
+                Complete estes itens para fortalecer seu perfil e aumentar as chances de publicação.
+              </p>
+            </div>
+            <span className="rounded-full bg-bg-primary/60 px-3 py-1 text-sm font-semibold text-gold">
+              {completion.percent}% completo
+            </span>
+          </div>
+
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-bg-tertiary">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-purple-deep to-gold transition-all"
+              style={{ width: `${completion.percent}%` }}
+            />
+          </div>
+
+          <ul className="mt-4 space-y-2">
+            {pendingChecks.map((check) => {
+              const section = SECTION_BY_KEY[check.key] ?? "dados";
+              return (
+                <li key={check.key}>
+                  <Link
+                    href={`/painel/perfil#${section}`}
+                    className="flex items-center justify-between rounded-xl border border-gold/20 bg-bg-primary/50 px-4 py-3 text-sm transition-colors hover:border-gold/50 hover:bg-bg-primary/80"
+                  >
+                    <span className="text-text-primary">{check.label}</span>
+                    <span className="font-medium text-gold">Completar →</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <Link
+            href="/painel/perfil"
+            className="mt-4 inline-flex rounded-xl bg-purple-deep px-4 py-2.5 text-sm font-medium text-white hover:bg-purple-light"
+          >
+            Completar perfil agora →
+          </Link>
+        </section>
+      )}
+
+      <section
+        className={`${showNextSteps ? "mt-6" : ""} rounded-2xl border border-border-subtle bg-bg-secondary p-5 sm:p-6`}
+      >
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <div className="mx-auto aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl border border-border-subtle sm:mx-0 sm:w-32">
             {coverPhoto ? (
@@ -279,53 +335,39 @@ export default function PainelDashboardPage() {
         </section>
       )}
 
-      <section className={`mt-6 rounded-2xl border p-5 ${toneClasses(insight.tone)}`}>
-        <h2 className="font-semibold text-text-primary">{insight.title}</h2>
-        <p className="mt-2 text-sm text-text-secondary">{insight.body}</p>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-bg-tertiary">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-purple-deep to-gold transition-all"
-            style={{ width: `${completion.percent}%` }}
-          />
-        </div>
-        <p className="mt-2 text-xs text-text-muted">{completion.percent}% completo</p>
-        {profile.status === "pending" && completion.readyForReview && (
-          <p className="mt-3 text-sm font-medium text-purple-light">
-            Perfil pronto para análise — nenhuma ação extra necessária no momento.
-          </p>
-        )}
-        {(profile.status === "rejected" || (!profile.isPremium && profile.status === "approved")) && (
-          <Link
-            href="/painel/mensagens"
-            className="mt-4 inline-flex rounded-xl border border-border-subtle px-4 py-2 text-sm text-purple-light hover:border-purple-deep/40"
-          >
-            Falar com a administração →
-          </Link>
-        )}
-      </section>
-
-      {pendingChecks.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-border-subtle bg-bg-secondary p-5">
-          <h2 className="font-semibold text-text-primary">Próximos passos</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Complete estes itens para melhorar seu perfil nos cards e na página pública.
-          </p>
-          <ul className="mt-4 space-y-2">
-            {pendingChecks.map((check) => {
-              const section = SECTION_BY_KEY[check.key] ?? "dados";
-              return (
-                <li key={check.key}>
-                  <Link
-                    href={`/painel/perfil#${section}`}
-                    className="flex items-center justify-between rounded-xl border border-border-subtle bg-bg-tertiary px-4 py-3 text-sm transition-colors hover:border-purple-deep/40"
-                  >
-                    <span className="text-text-secondary">{check.label}</span>
-                    <span className="text-purple-light">Completar →</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+      {!(
+        profile.status === "approved" &&
+        profile.isPublic &&
+        completion.percent === 100
+      ) && (
+        <section className={`mt-6 rounded-2xl border p-5 ${toneClasses(insight.tone)}`}>
+          <h2 className="font-semibold text-text-primary">{insight.title}</h2>
+          <p className="mt-2 text-sm text-text-secondary">{insight.body}</p>
+          {!showNextSteps && (
+            <>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-bg-tertiary">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-purple-deep to-gold transition-all"
+                  style={{ width: `${completion.percent}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-text-muted">{completion.percent}% completo</p>
+            </>
+          )}
+          {profile.status === "pending" && completion.readyForReview && (
+            <p className="mt-3 text-sm font-medium text-purple-light">
+              Perfil pronto para análise — nenhuma ação extra necessária no momento.
+            </p>
+          )}
+          {(profile.status === "rejected" ||
+            (!profile.isPremium && profile.status === "approved")) && (
+            <Link
+              href="/painel/mensagens"
+              className="mt-4 inline-flex rounded-xl border border-border-subtle px-4 py-2 text-sm text-purple-light hover:border-purple-deep/40"
+            >
+              Falar com a administração →
+            </Link>
+          )}
         </section>
       )}
 
@@ -336,10 +378,10 @@ export default function PainelDashboardPage() {
             {
               href: "/painel/perfil",
               title: "Editar perfil",
-              desc: "Nome, bio, preferências, tags e contato",
+              desc: "Nome, bio, valores, horários, tags e contato",
             },
             {
-              href: "/painel/valores",
+              href: "/painel/perfil#valores",
               title: "Valores e horários",
               desc: "Preços e disponibilidade no perfil",
             },
@@ -354,9 +396,9 @@ export default function PainelDashboardPage() {
               desc: `${momentStats?.totalViews ?? 0} views · ${momentStats?.totalLikes ?? 0} curtidas`,
             },
             {
-              href: "/painel/perfil#fotos",
+              href: "/painel/perfil#fotos-principais",
               title: "Fotos do perfil",
-              desc: `${profile.photos.length} foto(s) enviadas`,
+              desc: "Foto de perfil, capa e álbum",
             },
             {
               href: "/painel/mensagens",

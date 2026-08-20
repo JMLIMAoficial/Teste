@@ -76,7 +76,7 @@ export class AuthService {
           slug,
           displayName: dto.displayName,
           birthDate: new Date(dto.birthDate),
-          bio: dto.bio.trim(),
+          bio: dto.bio?.trim() || null,
           sexualPreference: dto.sexualPreference?.trim() || null,
           position: dto.position ?? null,
           penisSizeCm: dto.penisSizeCm ?? null,

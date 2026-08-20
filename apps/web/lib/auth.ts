@@ -113,7 +113,7 @@ export async function register(payload: {
   city: string;
   state: string;
   birthDate: string;
-  bio: string;
+  bio?: string;
   sexualPreference?: string;
   position?: string;
   penisSizeCm?: number;
