@@ -314,27 +314,19 @@ function ProfileWhatsAppSection({
 
   const wrapperClass =
     variant === "sticky"
-      ? "fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-success/20 bg-bg-secondary/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.45)] md:static md:bottom-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none"
+      ? "fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-success/20 bg-bg-secondary/95 p-3 shadow-[0_-8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md md:bottom-0 md:p-4"
       : variant === "compact"
         ? ""
-        : "md:rounded-2xl md:border md:border-success/20 md:bg-bg-secondary md:p-4";
+        : "rounded-2xl border border-success/20 bg-bg-secondary p-4";
 
   return (
     <section className={wrapperClass} aria-label="Contato WhatsApp">
-      <div
-        className={
-          variant === "sticky"
-            ? "mx-auto max-w-4xl md:rounded-2xl md:border md:border-success/20 md:bg-bg-secondary md:p-4"
-            : ""
-        }
-      >
-        {variant !== "compact" && (
-          <p className="mb-3 hidden text-sm text-text-secondary md:block">
-            Interessado? Entre em contato agora.
-          </p>
-        )}
+      <div className={variant === "sticky" ? "mx-auto max-w-4xl" : ""}>
         {variant === "compact" && (
           <p className="mb-2 text-xs text-text-muted">Contato profissional apenas.</p>
+        )}
+        {variant === "default" && (
+          <p className="mb-3 text-sm text-text-secondary">Interessado? Entre em contato agora.</p>
         )}
         <WhatsAppButton
           profileId={profile.profileId}
@@ -385,7 +377,7 @@ export function ProfilePageView({
 
   return (
     <ProfilePhotoGalleryProvider photos={galleryPhotos}>
-    <div className={`min-h-full bg-bg-primary ${showWhatsApp ? "pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:pb-8" : "pb-8"}`}>
+    <div className={`min-h-full bg-bg-primary ${showWhatsApp ? "pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:pb-28" : "pb-8"}`}>
       <section
         className={`relative aspect-[3/4] max-h-[min(85vh,720px)] w-full overflow-hidden md:hidden ${profile.isPremium ? "ring-2 ring-inset ring-gold/30" : ""}`}
       >
@@ -487,17 +479,6 @@ export function ProfilePageView({
 
         <SocialLinkButtons links={profile.socialLinks} />
 
-        {videos.length > 0 && (
-          <section id="videos">
-            <SectionHeading emoji="🎬">Vídeos</SectionHeading>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {videos.map((video) => (
-                <VideoCard key={video.id} video={video} />
-              ))}
-            </div>
-          </section>
-        )}
-
         {profile.pricing?.mode === "consult" && (
           <section>
             <SectionHeading>Valores</SectionHeading>
@@ -582,6 +563,17 @@ export function ProfilePageView({
           </section>
         )}
 
+        {videos.length > 0 && (
+          <section id="videos">
+            <SectionHeading emoji="🎬">Vídeos</SectionHeading>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {videos.map((video) => (
+                <VideoCard key={video.id} video={video} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {albumPhotos.length > 0 && (
           <section id="fotos">
             <SectionHeading emoji="📸">Fotos</SectionHeading>
@@ -613,11 +605,9 @@ export function ProfilePageView({
         )}
 
         <ProfileSafetyNotice />
-
-        {showWhatsApp && <div className="hidden md:block"><ProfileWhatsAppSection profile={profile} variant="default" /></div>}
-
-        {showWhatsApp && <div className="md:hidden"><ProfileWhatsAppSection profile={profile} variant="sticky" /></div>}
       </div>
+
+      {showWhatsApp && <ProfileWhatsAppSection profile={profile} variant="sticky" />}
     </div>
     </ProfilePhotoGalleryProvider>
   );
