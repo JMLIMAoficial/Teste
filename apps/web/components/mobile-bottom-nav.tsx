@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/", label: "Garotos", icon: "🏠", exact: true },
-  { href: "/momentos", label: "Momentos", icon: "✨", exact: false },
+  { href: "/", label: "Garotos", icon: "🍆", exact: true },
+  { href: "/momentos", label: "Momentos", icon: "🔥", exact: false },
 ] as const;
 
 const HIDDEN_PREFIXES = ["/painel", "/admin", "/login", "/cadastro"];

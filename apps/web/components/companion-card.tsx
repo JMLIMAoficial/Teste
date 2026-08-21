@@ -35,7 +35,7 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
             className={`absolute inset-0 bg-gradient-to-br ${profile.photoGradient} transition-transform duration-300 group-hover:scale-105`}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
 
         <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
           {profile.distanceKm != null && (
@@ -52,9 +52,9 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
           )}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h3 className="flex items-center gap-1.5 text-lg font-semibold text-text-primary">
-            <span>{profile.name}</span>
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
+          <h3 className="flex items-center gap-1.5 text-base font-semibold text-white sm:text-lg">
+            <span className="truncate">{profile.name}</span>
             {profile.isFeatured && (
               <span className="text-sm leading-none" title="Destaque" aria-label="Destaque">
                 ⭐
@@ -70,23 +70,29 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
               </span>
             )}
           </h3>
-          <p className="text-sm text-text-secondary">
+          <p className="mt-0.5 truncate text-sm font-medium text-white/95">
             {cardLocation(profile)}
-            {profile.penisSizeCm != null && (
-              <>
-                {" · "}
+          </p>
+          {(profile.penisSizeCm != null || position) && (
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-white">
+              {profile.penisSizeCm != null && (
                 <span aria-label={`${profile.penisSizeCm} centímetros`}>
                   🍆 {profile.penisSizeCm} cm
                 </span>
-              </>
-            )}
-          </p>
-          {position && <p className="mt-0.5 text-xs text-text-muted">{position}</p>}
+              )}
+              {profile.penisSizeCm != null && position && (
+                <span className="text-white/50" aria-hidden>
+                  ·
+                </span>
+              )}
+              {position && <span>{position}</span>}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap gap-1">
             {profile.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="rounded-md bg-bg-tertiary/80 px-2 py-0.5 text-[11px] text-text-secondary"
+                className="rounded-md bg-black/45 px-2 py-0.5 text-[11px] text-white/90"
               >
                 {tag}
               </span>
