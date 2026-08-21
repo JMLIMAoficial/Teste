@@ -106,7 +106,7 @@ function positionEmoji(position?: string | null) {
 
 function SectionHeading({ emoji, children }: { emoji?: string; children: React.ReactNode }) {
   return (
-    <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-purple-light">
+    <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white">
       {emoji ? <span aria-hidden="true">{emoji}</span> : null}
       {children}
     </h2>
@@ -243,7 +243,7 @@ function ProfileTags({ tags, className = "" }: { tags: string[]; className?: str
       {tags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full border border-border-subtle bg-bg-primary px-3 py-1 text-sm text-text-secondary md:bg-bg-tertiary"
+          className="rounded-full border border-[#a67c1a]/60 bg-[#c4a035] px-3 py-1 text-sm font-medium text-[#1a1408]"
         >
           {tag}
         </span>
