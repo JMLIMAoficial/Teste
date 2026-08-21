@@ -96,7 +96,7 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
     <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-text-primary sm:text-2xl">Perto de você</h2>
+          <h1 className="text-xl font-semibold text-text-primary sm:text-2xl">Perto de você</h1>
           <p className="mt-1 text-sm text-text-muted">
             {sortedByDistance && geo.status === "ready"
               ? `Ordenado por distância${

@@ -303,35 +303,23 @@ function ProfileSafetyNotice() {
 
 function ProfileWhatsAppSection({
   profile,
-  variant = "default",
 }: {
   profile: ProfilePageData;
-  variant?: "default" | "compact" | "sticky";
 }) {
   if (!(profile.hasWhatsApp && profile.whatsappUrl && profile.profileId)) {
     return null;
   }
 
-  const wrapperClass =
-    variant === "sticky"
-      ? "fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-success/20 bg-bg-secondary/95 p-3 shadow-[0_-8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md md:bottom-0 md:p-4"
-      : variant === "compact"
-        ? ""
-        : "rounded-2xl border border-success/20 bg-bg-secondary p-4";
-
   return (
-    <section className={wrapperClass} aria-label="Contato WhatsApp">
-      <div className={variant === "sticky" ? "mx-auto max-w-4xl" : ""}>
-        {variant === "compact" && (
-          <p className="mb-2 text-xs text-text-muted">Contato profissional apenas.</p>
-        )}
-        {variant === "default" && (
-          <p className="mb-3 text-sm text-text-secondary">Interessado? Entre em contato agora.</p>
-        )}
+    <section
+      className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-success/20 bg-bg-secondary/95 p-3 shadow-[0_-8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md md:bottom-0 md:p-4"
+      aria-label="Contato WhatsApp"
+    >
+      <div className="mx-auto max-w-4xl">
         <WhatsAppButton
           profileId={profile.profileId}
           url={profile.whatsappUrl}
-          label={variant === "compact" ? "Me chama no WhatsApp" : "Conversar no WhatsApp"}
+          label="Conversar no WhatsApp"
           fullWidth
         />
       </div>
@@ -407,12 +395,6 @@ export function ProfilePageView({
         </div>
       </section>
 
-      {showWhatsApp && (
-        <div className="px-4 pt-4 md:hidden">
-          <ProfileWhatsAppSection profile={profile} variant="compact" />
-        </div>
-      )}
-
       <section className="mx-auto hidden max-w-4xl px-6 pt-8 md:block">
         <Link
           href={backHref}
@@ -442,11 +424,6 @@ export function ProfilePageView({
             </div>
             <ProfileMetaChips profile={profile} />
             <ProfileTags tags={profile.tags} className="mt-4" />
-            {showWhatsApp && (
-              <div className="mt-5">
-                <ProfileWhatsAppSection profile={profile} variant="compact" />
-              </div>
-            )}
           </div>
         </div>
       </section>
@@ -607,7 +584,7 @@ export function ProfilePageView({
         <ProfileSafetyNotice />
       </div>
 
-      {showWhatsApp && <ProfileWhatsAppSection profile={profile} variant="sticky" />}
+      {showWhatsApp && <ProfileWhatsAppSection profile={profile} />}
     </div>
     </ProfilePhotoGalleryProvider>
   );
