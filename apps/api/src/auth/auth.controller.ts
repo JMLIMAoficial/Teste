@@ -84,10 +84,12 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string) {
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refresh_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      // Web (Vercel) e API (Railway) em domínios diferentes exigem SameSite=None.
+      sameSite: isProd ? 'none' : 'lax',
       path: '/api/v1/auth',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });

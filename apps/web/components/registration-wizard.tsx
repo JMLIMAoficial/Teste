@@ -93,7 +93,7 @@ export function RegistrationWizard() {
       const msg = err instanceof Error ? err.message : "Erro no cadastro";
       setError(
         msg.includes("fetch") || msg.includes("Timeout") || msg === "Failed to fetch"
-          ? "Não foi possível conectar à API. Inicie o servidor com: npm run dev:api"
+          ? "Não foi possível conectar ao servidor. Tente de novo em instantes."
           : msg,
       );
     } finally {

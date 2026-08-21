@@ -27,8 +27,8 @@ export default function LoginPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao entrar";
       setError(
-        msg.includes("fetch") || msg.includes("Timeout")
-          ? "Não foi possível conectar à API. Verifique se ela está rodando (npm run dev:api)."
+        msg.includes("fetch") || msg.includes("Timeout") || msg === "Failed to fetch"
+          ? "Não foi possível conectar ao servidor. Tente de novo em instantes."
           : msg,
       );
       setLoading(false);
