@@ -7,8 +7,10 @@ import { fetchRankings, fetchSeoMeta } from "@/lib/api";
 export async function generateMetadata(): Promise<Metadata> {
   const meta = await fetchSeoMeta("rankings");
   return {
-    title: meta?.title ?? "Rankings",
-    description: meta?.description,
+    title: meta?.title ?? "Rankings de garotos de programa",
+    description:
+      meta?.description ??
+      "Os garotos de programa mais populares e em alta no Clube dos Garotos.",
   };
 }
 
@@ -29,9 +31,9 @@ export default async function RankingsPage({
 
   return (
     <PublicPageLayout mainClassName="mx-auto flex-1 max-w-7xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-bold text-text-primary">Rankings</h1>
+        <h1 className="text-3xl font-bold text-text-primary">Rankings de garotos de programa</h1>
         <p className="mt-2 text-text-secondary">
-          Perfis mais populares e em alta na plataforma.
+          Os anúncios mais populares e em alta no Clube dos Garotos.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2">

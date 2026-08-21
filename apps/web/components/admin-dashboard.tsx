@@ -340,9 +340,9 @@ export function AdminDashboard({ stats }: { stats: AdminDashboardStats }) {
               desc: `${stats.pendingProfiles} aguardando análise`,
             },
             {
-              href: "/admin/perfis?premium=true",
+              href: "/admin/premium",
               title: "Premium & Destaque",
-              desc: `${insights.premiumActive} premium ativo(s)`,
+              desc: `${insights.premiumActive} premium ativo(s) · fila de solicitações`,
             },
             {
               href: "/admin/mensagens",

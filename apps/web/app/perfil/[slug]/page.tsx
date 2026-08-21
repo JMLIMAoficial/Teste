@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProfilePageView } from "@/components/profile-page-view";
 import { JsonLd } from "@/components/json-ld";
@@ -7,17 +8,14 @@ import {
   fetchProfileBySlug,
   fetchProfileVideos,
   fetchReviews,
+  fetchSeoMeta,
   fetchSeoSchema,
   fetchSimilarProfiles,
 } from "@/lib/api";
 import { featuredProfiles } from "@/lib/mock-data";
+import { profilePositionLabel } from "@/lib/profile-position";
 
-function positionLabel(position?: string | null) {
-  if (position === "active") return "Ativo";
-  if (position === "passive") return "Passivo";
-  if (position === "versatile") return "Versátil";
-  return null;
-}
+const USE_MOCK_FALLBACK = process.env.NODE_ENV !== "production";
 
 type ApiProfileDetail = {
   id: string;
@@ -33,7 +31,7 @@ type ApiProfileDetail = {
   position?: string | null;
   penisSizeCm?: number | null;
   tags?: string[];
-  photos?: Array<{ id: string; url: string; isCover: boolean }>;
+  photos?: Array<{ id: string; url: string; isCover: boolean; isProfile?: boolean }>;
   coverPhotoUrl?: string | null;
   hotScore?: number;
   hotScoreLabel?: string;
@@ -59,14 +57,60 @@ type ApiProfileDetail = {
   }>;
 };
 
-export default async function ProfilePage({
-  params,
-}: {
+type PageProps = {
   params: Promise<{ slug: string }>;
-}) {
+};
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const apiProfile = (await fetchProfileBySlug(slug)) as ApiProfileDetail | null;
-  const mockProfile = featuredProfiles.find((p) => p.slug === slug);
+  const meta = await fetchSeoMeta("profile", {
+    slug,
+    name: apiProfile?.name,
+    city: apiProfile?.city,
+  });
+
+  const title =
+    meta?.title ??
+    (apiProfile
+      ? `${apiProfile.name} — garoto de programa em ${apiProfile.city}`
+      : undefined);
+  const description =
+    meta?.description ??
+    (apiProfile
+      ? `${apiProfile.name} é garoto de programa em ${apiProfile.city}. ${
+          apiProfile.bio?.slice(0, 100) ?? "Veja fotos e entre em contato no Clube dos Garotos."
+        }`
+      : undefined);
+  const image = apiProfile?.coverPhotoUrl ?? apiProfile?.photos?.[0]?.url;
+
+  return {
+    title: title ?? "Perfil",
+    description,
+    robots: meta?.robots,
+    alternates: meta?.canonical ? { canonical: meta.canonical } : undefined,
+    openGraph: {
+      title: title ?? "Perfil",
+      description: description ?? undefined,
+      url: meta?.canonical,
+      images: image ? [{ url: image }] : undefined,
+      type: "profile",
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title: title ?? "Perfil",
+      description: description ?? undefined,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
+export default async function ProfilePage({ params }: PageProps) {
+  const { slug } = await params;
+  const apiProfile = (await fetchProfileBySlug(slug)) as ApiProfileDetail | null;
+  const mockProfile = USE_MOCK_FALLBACK
+    ? featuredProfiles.find((p) => p.slug === slug)
+    : undefined;
 
   if (!apiProfile && !mockProfile) {
     notFound();
@@ -102,7 +146,7 @@ export default async function ProfilePage({
         memberSince: apiProfile.memberSince,
         bio: apiProfile.bio,
         preference: apiProfile.preference,
-        position: positionLabel(apiProfile.position),
+        position: profilePositionLabel(apiProfile.position),
         penisSizeCm: apiProfile.penisSizeCm,
         tags: apiProfile.tags ?? [],
         photos: apiProfile.photos ?? [],
@@ -129,7 +173,7 @@ export default async function ProfilePage({
         position: null as string | null,
         penisSizeCm: mockProfile!.penisSizeCm,
         tags: mockProfile!.tags,
-        photos: [] as Array<{ id: string; url: string; isCover: boolean }>,
+        photos: [] as Array<{ id: string; url: string; isCover: boolean; isProfile?: boolean }>,
         photoGradient: mockProfile!.photoGradient,
         hotScore: mockProfile!.hotScore,
         hotScoreLabel: mockProfile!.hotScoreLabel,
@@ -143,12 +187,12 @@ export default async function ProfilePage({
     <PublicPageLayout mainClassName="flex-1">
       <JsonLd data={schema} />
       <ProfilePageView
-          profile={profileData}
-          videos={videosData.videos}
-          reviews={reviewsData.data}
-          reviewSummary={reviewsData.summary}
-          comments={comments}
-          similarProfiles={similarData.profiles}
+        profile={profileData}
+        videos={videosData.videos}
+        reviews={reviewsData.data}
+        reviewSummary={reviewsData.summary}
+        comments={comments}
+        similarProfiles={similarData.profiles}
       />
     </PublicPageLayout>
   );

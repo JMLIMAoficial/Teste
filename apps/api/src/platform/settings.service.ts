@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export const DEFAULT_SETTINGS: Record<string, { value: string; description: string }> = {
-  site_name: { value: 'Acompanhante', description: 'Nome do site' },
-  hero_title_prefix: { value: 'Encontre acompanhantes', description: 'Título do hero (parte 1)' },
-  hero_title_highlight: { value: 'exclusivas', description: 'Título do hero (destaque)' },
+  site_name: { value: 'Clube dos Garotos', description: 'Nome do site' },
+  hero_title_prefix: { value: 'Encontre garotos de programa', description: 'Título do hero (parte 1)' },
+  hero_title_highlight: { value: 'perto de você', description: 'Título do hero (destaque)' },
   hero_subtitle: {
-    value: 'Descubra perfis premium com confiança, sofisticação e facilidade de navegação.',
+    value:
+      'Perfis com fotos, momentos e contato. Encontre garoto de programa em cidades do Brasil.',
     description: 'Subtítulo do hero',
   },
   maintenance_mode: { value: 'false', description: 'Modo manutenção (true/false)' },

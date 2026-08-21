@@ -1,13 +1,7 @@
 import Link from "next/link";
 import type { CompanionCardData } from "@/lib/mock-data";
 import { OptimizedImage } from "@/components/optimized-image";
-
-function positionLabel(position?: string | null) {
-  if (position === "active") return "Ativo";
-  if (position === "passive") return "Passivo";
-  if (position === "versatile") return "Versátil";
-  return null;
-}
+import { profilePositionLabel } from "@/lib/profile-position";
 
 function cardLocation(profile: CompanionCardData) {
   if (profile.neighborhood?.trim()) return profile.neighborhood.trim();
@@ -15,7 +9,7 @@ function cardLocation(profile: CompanionCardData) {
 }
 
 export function CompanionCard({ profile }: { profile: CompanionCardData }) {
-  const position = positionLabel(profile.position);
+  const position = profilePositionLabel(profile.position);
   const imageUrl = profile.coverPhotoThumbUrl ?? profile.coverPhotoUrl;
 
   return (

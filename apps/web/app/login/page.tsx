@@ -83,19 +83,6 @@ export default function LoginPage() {
             Cadastre-se
           </Link>
         </p>
-
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-8 space-y-3 rounded-xl border border-border-subtle bg-bg-secondary p-4 text-xs text-text-muted">
-            <div>
-              <p className="font-medium text-text-secondary">Demo admin</p>
-              <p>admin@demo.local / Admin123!</p>
-            </div>
-            <div>
-              <p className="font-medium text-text-secondary">Demo acompanhante</p>
-              <p>maria@demo.local / Demo123!</p>
-            </div>
-          </div>
-        )}
     </PublicPageLayout>
   );
 }

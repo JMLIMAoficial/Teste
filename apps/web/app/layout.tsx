@@ -10,10 +10,45 @@ const inter = Inter({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+const SITE_DESCRIPTION =
+  "Garotos de programa no Clube dos Garotos: perfis com fotos, momentos e contato perto de você. Encontre garoto de programa em São Paulo, Rio e outras cidades do Brasil.";
+
 export const metadata: Metadata = {
-  title: "Acompanhante — Catálogo Premium",
-  description:
-    "Plataforma premium para descoberta de acompanhantes. Exclusividade, confiança e sofisticação.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Garotos de programa — Clube dos Garotos",
+    template: "%s · Clube dos Garotos",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "Clube dos Garotos",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: "Clube dos Garotos",
+    title: "Garotos de programa — Clube dos Garotos",
+    description: SITE_DESCRIPTION,
+    url: siteUrl,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Garotos de programa — Clube dos Garotos",
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({

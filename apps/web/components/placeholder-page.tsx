@@ -16,7 +16,7 @@ export default function PlaceholderPage({
         href="/"
         className="mt-8 inline-flex rounded-xl bg-purple-deep px-6 py-3 text-sm font-medium text-white hover:bg-purple-light"
       >
-        Voltar ao início
+        Voltar aos garotos
       </Link>
     </PublicPageLayout>
   );

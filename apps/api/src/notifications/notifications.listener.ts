@@ -15,6 +15,7 @@ import {
   type PremiumStatusPayload,
   type VerificationRequestPayload,
   type ReportSubmittedPayload,
+  type BoostRequestPayload,
 } from '../events/domain-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailQueueService } from '../email/email-queue.service';
@@ -52,7 +53,7 @@ export class NotificationsListener {
       await this.emailQueue.enqueue(
         {
           to: user.email,
-          subject: 'Seu perfil foi aprovado — Acompanhante',
+          subject: 'Seu perfil foi aprovado — Clube dos Garotos',
           html: `<p>Olá ${payload.displayName},</p><p>Seu perfil foi aprovado e já está visível na plataforma.</p><p><a href="${this.siteUrl}/perfil/${payload.slug}">Ver perfil</a></p>`,
         },
         `profile-approved-${payload.profileId}`,
@@ -158,7 +159,7 @@ export class NotificationsListener {
     await this.emailQueue.enqueue(
       {
         to: payload.email,
-        subject: 'Bem-vindo à Acompanhante',
+        subject: 'Bem-vindo ao Clube dos Garotos',
         html: `<p>Olá ${payload.displayName},</p><p>Sua conta foi criada com sucesso. Complete seu perfil no painel para iniciar a moderação.</p><p><a href="${this.siteUrl}/painel">Acessar painel</a></p>`,
       },
       `welcome-${payload.userId}`,
@@ -320,6 +321,49 @@ export class NotificationsListener {
       sourceEvent: DomainEvents.ReportSubmitted,
       sourceEventId: payload.reportId,
       actionUrl: `${this.siteUrl}/admin/denuncias`,
+    });
+  }
+
+  @OnEvent(DomainEvents.PremiumRequested)
+  async onPremiumRequested(payload: BoostRequestPayload) {
+    await this.notifications.notifyAdmins({
+      type: 'premium_requested',
+      title: 'Solicitação de Premium',
+      message: `${payload.displayName} solicitou o plano Premium.`,
+      priority: 'high',
+      sourceEvent: DomainEvents.PremiumRequested,
+      sourceEventId: payload.requestId,
+      actionUrl: `${this.siteUrl}/admin/premium`,
+    });
+  }
+
+  @OnEvent(DomainEvents.FeaturedRequested)
+  async onFeaturedRequested(payload: BoostRequestPayload) {
+    await this.notifications.notifyAdmins({
+      type: 'featured_requested',
+      title: 'Solicitação de Destaque',
+      message: `${payload.displayName} solicitou Destaque.`,
+      priority: 'high',
+      sourceEvent: DomainEvents.FeaturedRequested,
+      sourceEventId: payload.requestId,
+      actionUrl: `${this.siteUrl}/admin/premium`,
+    });
+  }
+
+  @OnEvent(DomainEvents.BoostRequestRejected)
+  async onBoostRequestRejected(payload: BoostRequestPayload) {
+    const label = payload.type === 'premium' ? 'Premium' : 'Destaque';
+    await this.notifications.create({
+      userId: payload.userId,
+      type: 'boost_rejected',
+      title: `${label} não aprovado`,
+      message: payload.rejectionReason
+        ? `Sua solicitação de ${label} foi recusada: ${payload.rejectionReason}`
+        : `Sua solicitação de ${label} não foi aprovada. Você pode tentar novamente.`,
+      priority: 'normal',
+      sourceEvent: DomainEvents.BoostRequestRejected,
+      sourceEventId: payload.requestId,
+      actionUrl: `${this.siteUrl}/painel/status`,
     });
   }
 }

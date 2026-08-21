@@ -6,6 +6,7 @@ import { ProfilePageView } from "@/components/profile-page-view";
 import { PainelShell } from "@/components/painel-shell";
 import type { VideoItem } from "@/lib/api";
 import { apiFetch, getAccessToken, logout } from "@/lib/auth";
+import { profilePositionLabel } from "@/lib/profile-position";
 
 type PreviewProfile = {
   slug: string;
@@ -35,13 +36,6 @@ type PreviewProfile = {
   socialLinks?: Partial<Record<"privacy" | "onlyfans" | "x" | "instagram", string>>;
   id?: string;
 };
-
-function positionLabel(position?: string | null) {
-  if (position === "active") return "Ativo";
-  if (position === "passive") return "Passivo";
-  if (position === "versatile") return "Versátil";
-  return null;
-}
 
 export default function PainelPreviewPage() {
   const router = useRouter();
@@ -102,7 +96,7 @@ export default function PainelPreviewPage() {
           memberSince: profile.memberSince,
           bio: profile.bio,
           preference: profile.preference,
-          position: positionLabel(profile.position),
+          position: profilePositionLabel(profile.position),
           penisSizeCm: profile.penisSizeCm,
           tags: profile.tags ?? [],
           photos: profile.photos ?? [],

@@ -11,36 +11,46 @@ export class SeoService {
   ) {}
 
   getMeta(pageType: string, params?: { slug?: string; name?: string; city?: string }) {
-    const siteName = this.config.get('SEO_SITE_NAME', 'Acompanhante');
+    const siteName = this.config.get('SEO_SITE_NAME', 'Clube dos Garotos');
 
     const templates: Record<string, { title: string; description: string; robots?: string }> = {
       home: {
-        title: `${siteName} — Acompanhantes Premium`,
+        title: `Garotos de programa — ${siteName}`,
         description:
-          'Descubra acompanhantes premium com confiança, sofisticação e facilidade de navegação.',
+          'Garotos de programa no Clube dos Garotos: perfis com fotos, momentos e contato perto de você. Encontre garoto de programa em São Paulo, Rio e outras cidades do Brasil.',
       },
       profile: {
         title: params?.name
-          ? `${params.name} — ${params.city ?? 'Brasil'} | ${siteName}`
+          ? `${params.name} — garoto de programa em ${params.city ?? 'Brasil'} | ${siteName}`
           : `Perfil | ${siteName}`,
-        description: `Conheça ${params?.name ?? 'este perfil'}, acompanhante em ${params?.city ?? 'Brasil'}.`,
+        description: params?.name
+          ? `${params.name} é garoto de programa em ${params.city ?? 'Brasil'}. Veja fotos, momentos e entre em contato no ${siteName}.`
+          : `Perfil de garoto de programa no ${siteName}.`,
       },
       search: {
-        title: `Buscar acompanhantes — ${siteName}`,
-        description: 'Encontre acompanhantes por nome, cidade ou categoria.',
+        title: `Buscar garotos de programa — ${siteName}`,
+        description: 'Busque garoto de programa por cidade, bairro, posição ou categoria.',
         robots: 'noindex, follow',
       },
       rankings: {
-        title: `Rankings — ${siteName}`,
-        description: 'Perfis mais populares e em alta na plataforma.',
+        title: `Rankings de garotos de programa — ${siteName}`,
+        description: 'Os garotos de programa mais populares e em alta na plataforma.',
       },
       city: {
-        title: `Acompanhantes em ${params?.name ?? params?.slug} — ${siteName}`,
-        description: `Encontre acompanhantes premium em ${params?.name ?? params?.slug}.`,
+        title: `Garotos de programa em ${params?.name ?? params?.slug} — ${siteName}`,
+        description: `Encontre garoto de programa em ${params?.name ?? params?.slug}. Perfis com fotos, momentos e contato no ${siteName}.`,
       },
       category: {
-        title: `${params?.name ?? params?.slug} — Acompanhantes | ${siteName}`,
-        description: `Perfis com a categoria ${params?.name ?? params?.slug}.`,
+        title: `${params?.name ?? params?.slug} — garotos de programa | ${siteName}`,
+        description: `Garotos de programa com a categoria ${params?.name ?? params?.slug} no ${siteName}.`,
+      },
+      moments: {
+        title: `Momentos de garotos de programa — ${siteName}`,
+        description: 'Veja momentos e stories publicados por garotos de programa no Clube dos Garotos.',
+      },
+      videos: {
+        title: `Vídeos de garotos de programa — ${siteName}`,
+        description: 'Galeria de vídeos de garotos de programa no Clube dos Garotos.',
       },
     };
 
@@ -59,7 +69,11 @@ export class SeoService {
             ? `${domain}/cidade/${params.slug}`
             : pageType === 'category' && params?.slug
               ? `${domain}/categoria/${params.slug}`
-              : domain,
+              : pageType === 'moments'
+                ? `${domain}/momentos`
+                : pageType === 'videos'
+                  ? `${domain}/videos`
+                  : domain,
     };
   }
 
@@ -73,7 +87,7 @@ export class SeoService {
       imageUrl?: string;
     },
   ) {
-    const siteName = this.config.get('SEO_SITE_NAME', 'Acompanhante');
+    const siteName = this.config.get('SEO_SITE_NAME', 'Clube dos Garotos');
     const domain = this.config.get('SITE_URL', 'http://localhost:3000');
 
     if (pageType === 'home') {
@@ -83,8 +97,11 @@ export class SeoService {
           {
             '@type': 'WebSite',
             name: siteName,
+            alternateName: ['Clube dos Garotos', 'Garotos de programa'],
             url: domain,
-            description: 'Plataforma premium para descoberta de acompanhantes.',
+            description:
+              'Clube dos Garotos — anúncios de garotos de programa com fotos, momentos e contato em cidades do Brasil.',
+            inLanguage: 'pt-BR',
             potentialAction: {
               '@type': 'SearchAction',
               target: {
@@ -98,6 +115,8 @@ export class SeoService {
             '@type': 'Organization',
             name: siteName,
             url: domain,
+            description:
+              'Plataforma para encontrar garoto de programa com perfis verificados e moderados.',
           },
         ],
       };
@@ -112,8 +131,11 @@ export class SeoService {
             '@type': 'Person',
             name: params.name,
             url: profileUrl,
-            description: params.description,
+            description:
+              params.description ??
+              `${params.name} — garoto de programa em ${params.city ?? 'Brasil'} no ${siteName}.`,
             image: params.imageUrl,
+            jobTitle: 'Garoto de programa',
             ...(params.city
               ? {
                   address: {
@@ -130,7 +152,7 @@ export class SeoService {
               {
                 '@type': 'ListItem',
                 position: 1,
-                name: 'Início',
+                name: 'Garotos de programa',
                 item: domain,
               },
               {
@@ -138,6 +160,40 @@ export class SeoService {
                 position: 2,
                 name: params.name,
                 item: profileUrl,
+              },
+            ],
+          },
+        ],
+      };
+    }
+
+    if (pageType === 'city' && (params?.name || params?.slug)) {
+      const cityName = params.name ?? params.slug!;
+      const cityUrl = `${domain}/cidade/${params.slug ?? cityToSlug(cityName)}`;
+      return {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'CollectionPage',
+            name: `Garotos de programa em ${cityName}`,
+            description: `Anúncios de garoto de programa em ${cityName} no ${siteName}.`,
+            url: cityUrl,
+            isPartOf: { '@type': 'WebSite', name: siteName, url: domain },
+          },
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Garotos de programa',
+                item: domain,
+              },
+              {
+                '@type': 'ListItem',
+                position: 2,
+                name: cityName,
+                item: cityUrl,
               },
             ],
           },
@@ -170,8 +226,12 @@ export class SeoService {
 
     const urls: Array<{ loc: string; priority: string; changefreq: string }> = [
       { loc: domain, priority: '1.0', changefreq: 'daily' },
+      { loc: `${domain}/momentos`, priority: '0.8', changefreq: 'daily' },
+      { loc: `${domain}/videos`, priority: '0.7', changefreq: 'daily' },
       { loc: `${domain}/rankings`, priority: '0.8', changefreq: 'daily' },
-      { loc: `${domain}/busca`, priority: '0.5', changefreq: 'weekly' },
+      { loc: `${domain}/busca`, priority: '0.4', changefreq: 'weekly' },
+      { loc: `${domain}/sobre`, priority: '0.5', changefreq: 'monthly' },
+      { loc: `${domain}/contato`, priority: '0.4', changefreq: 'monthly' },
     ];
 
     for (const p of profiles) {

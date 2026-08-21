@@ -18,7 +18,7 @@ export function InstitutionalLayout({
         href="/"
         className="mt-10 inline-flex rounded-xl border border-border-subtle px-5 py-2.5 text-sm text-text-secondary hover:border-purple-deep/40 hover:text-text-primary"
       >
-        ← Voltar ao início
+        ← Voltar aos garotos
       </Link>
     </PublicPageLayout>
   );

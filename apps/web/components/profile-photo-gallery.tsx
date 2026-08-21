@@ -99,7 +99,7 @@ function Lightbox({
       <div className="flex items-center justify-between gap-3 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <p className="text-sm text-text-secondary">
           {index + 1} / {photos.length}
-          {photo.isCover && <span className="ml-2 text-gold">· Capa</span>}
+          {photo.isCover && <span className="ml-2 text-gold">· Principal</span>}
         </p>
         <button
           type="button"
@@ -251,20 +251,33 @@ export function ProfilePhotoTrigger({
   );
 }
 
-export function ProfilePhotoGrid({ className = "" }: { className?: string }) {
+export function ProfilePhotoGrid({
+  className = "",
+  albumOnly = false,
+}: {
+  className?: string;
+  /** Quando true, omite capa/perfil da grade (ficam só no hero/lightbox). */
+  albumOnly?: boolean;
+}) {
   const { photos, openAt } = useGallery();
 
-  if (photos.length === 0) return null;
+  const items = photos
+    .map((photo, index) => ({ photo, index }))
+    .filter(({ photo }) =>
+      albumOnly ? !photo.isCover && !photo.isProfile : true,
+    );
+
+  if (items.length === 0) return null;
 
   return (
     <div className={`grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 ${className}`}>
-      {photos.map((photo, index) => (
+      {items.map(({ photo, index }, displayIndex) => (
         <button
           key={photo.id}
           type="button"
           onClick={() => openAt(index)}
           className="group relative overflow-hidden rounded-xl border border-border-subtle text-left cursor-zoom-in"
-          aria-label={`Abrir foto ${index + 1} de ${photos.length}`}
+          aria-label={`Abrir foto ${displayIndex + 1} de ${items.length}`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -276,7 +289,7 @@ export function ProfilePhotoGrid({ className = "" }: { className?: string }) {
           />
           {photo.isCover && (
             <span className="absolute left-2 top-2 rounded-md bg-bg-primary/90 px-2 py-0.5 text-[10px] font-semibold text-text-primary md:bg-bg-primary/80 md:backdrop-blur-sm">
-              ⭐ Capa
+              Principal
             </span>
           )}
         </button>

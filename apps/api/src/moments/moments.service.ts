@@ -70,13 +70,11 @@ export class MomentsService {
         mediaAssetId: asset.id,
         mediaType: mediaType ?? (isVideo ? 'video' : 'photo'),
         caption: caption?.slice(0, 300),
-        status: 'approved',
-        publishedAt: new Date(),
+        status: 'pending',
+        publishedAt: null,
       },
       include: { mediaAsset: true },
     });
-
-    await this.analytics.recalculateHotScore(profile.id);
 
     return this.toMomentDto(moment, profile.displayName, profile.slug);
   }

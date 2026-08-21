@@ -293,10 +293,8 @@ export class ProfilesService {
       .filter(Boolean);
 
     const hs = await this.prisma.hotScore.findUnique({ where: { profileId: profile.id } });
-    const coverPath = this.coverPhoto.pickBannerStoragePath(profile.photos);
-    const coverUrls = coverPath ? await this.storage.resolvePhotoUrls(coverPath) : null;
-    const profilePath = this.coverPhoto.pickCoverStoragePath(profile.photos);
-    const profileUrls = profilePath ? await this.storage.resolvePhotoUrls(profilePath) : null;
+    const mainPath = this.coverPhoto.pickMainStoragePath(profile.photos);
+    const mainUrls = mainPath ? await this.storage.resolvePhotoUrls(mainPath) : null;
     const card = toPublicCard({
       slug: profile.slug,
       displayName: profile.displayName,
@@ -313,13 +311,14 @@ export class ProfilesService {
       location: profile.location,
       penisSizeCm: profile.penisSizeCm,
       position: profile.position,
-      coverPhotoUrl: profileUrls?.coverPhotoUrl ?? coverUrls?.coverPhotoUrl ?? null,
-      coverPhotoThumbUrl:
-        profileUrls?.coverPhotoThumbUrl ?? coverUrls?.coverPhotoThumbUrl ?? null,
+      coverPhotoUrl: mainUrls?.coverPhotoUrl ?? null,
+      coverPhotoThumbUrl: mainUrls?.coverPhotoThumbUrl ?? null,
       isVerified: profile.isVerified,
     });
 
-    const approvedPhotos = profile.photos.filter((p) => p.status === 'approved');
+    const approvedPhotos = profile.photos.filter(
+      (p) => p.status === 'approved' && !p.isCover && !p.isProfile,
+    );
     const photos = await Promise.all(
       approvedPhotos.map(async (p) => {
         const urls = await this.storage.resolvePhotoUrls(p.mediaAsset.storagePath);
@@ -343,8 +342,8 @@ export class ProfilesService {
       penisSizeCm: profile.penisSizeCm,
       tags,
       photos,
-      coverPhotoUrl: coverUrls?.coverPhotoUrl ?? profileUrls?.coverPhotoUrl ?? null,
-      coverPhotoThumbUrl: coverUrls?.coverPhotoThumbUrl ?? profileUrls?.coverPhotoThumbUrl ?? null,
+      coverPhotoUrl: mainUrls?.coverPhotoUrl ?? null,
+      coverPhotoThumbUrl: mainUrls?.coverPhotoThumbUrl ?? null,
       memberSince: formatMemberSince(profile.createdAt),
       socialLinks: parseSocialLinks(profile.socialLinks),
       ...buildProfileLocationFields(profile.location),

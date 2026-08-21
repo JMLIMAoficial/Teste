@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { CompanionCardData } from "@/lib/mock-data";
+import { PROFILE_POSITIONS } from "@/lib/profile-position";
 
 const SORT_OPTIONS = [
   { value: "relevancia", label: "Mais relevantes" },
@@ -14,9 +15,7 @@ const SORT_OPTIONS = [
 
 const POSITION_OPTIONS = [
   { value: "", label: "Qualquer" },
-  { value: "active", label: "Ativo" },
-  { value: "passive", label: "Passivo" },
-  { value: "versatile", label: "Versátil" },
+  ...PROFILE_POSITIONS,
 ] as const;
 
 const PREFERENCE_OPTIONS = [

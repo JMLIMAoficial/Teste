@@ -2,16 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch, clearAccessToken, fetchMe, getAccessToken } from "@/lib/auth";
 import { getProfileCompletion, type ProfileCompletion } from "@/lib/profile-completion";
+import { PROFILE_POSITIONS } from "@/lib/profile-position";
 import { toastToneFromMessage, useToast } from "@/components/toast";
 const PREFERENCES = ["Heterossexual", "Homossexual", "Bissexual", "Pansexual"];
-const POSITIONS = [
-  { value: "active", label: "Ativo" },
-  { value: "passive", label: "Passivo" },
-  { value: "versatile", label: "Versátil" },
-] as const;
 
 type SocialLinkPlatform = "privacy" | "onlyfans" | "x" | "instagram";
 type SocialLinks = Record<SocialLinkPlatform, string>;
@@ -63,13 +59,6 @@ const EMPTY_PRICING: PricingData = {
 
 type TagOption = { id: string; name: string; slug: string };
 
-type OwnVideo = {
-  id: string;
-  title: string;
-  status: string;
-  createdAt: string;
-};
-
 type Profile = {
   id: string;
   slug: string;
@@ -107,11 +96,58 @@ type Profile = {
 const inputClass =
   "w-full rounded-xl border border-border-subtle bg-bg-tertiary px-4 py-3 text-text-primary focus:border-purple-deep focus:outline-none";
 
-function mediaStatusLabel(status: string) {
-  if (status === "approved") return "Publicado";
-  if (status === "pending") return "Aguardando moderação";
-  if (status === "rejected") return "Rejeitado";
-  return status;
+type EditorBaseline = {
+  displayName: string;
+  birthDate: string;
+  bio: string;
+  sexualPreference: string;
+  position: string;
+  penisSizeCm: string;
+  socialLinks: SocialLinks;
+  whatsapp: string;
+  cep: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  selectedTagIds: string[];
+  customTagNames: string[];
+  pricing: PricingData;
+  availabilityDays: AvailabilityDay[];
+};
+
+function normalizeBaseline(value: EditorBaseline): EditorBaseline {
+  return {
+    ...value,
+    displayName: value.displayName.trim(),
+    bio: value.bio.trim(),
+    whatsapp: value.whatsapp.trim(),
+    cep: value.cep.trim(),
+    neighborhood: value.neighborhood.trim(),
+    city: value.city.trim(),
+    state: value.state.trim(),
+    selectedTagIds: [...value.selectedTagIds].sort(),
+    customTagNames: [...value.customTagNames]
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    socialLinks: {
+      privacy: value.socialLinks.privacy.trim(),
+      onlyfans: value.socialLinks.onlyfans.trim(),
+      x: value.socialLinks.x.trim(),
+      instagram: value.socialLinks.instagram.trim(),
+    },
+    pricing: {
+      ...value.pricing,
+      customItems: value.pricing.customItems.map((item) => ({
+        label: item.label.trim(),
+        price: item.price,
+      })),
+    },
+  };
+}
+
+function baselineKey(value: EditorBaseline) {
+  return JSON.stringify(normalizeBaseline(value));
 }
 
 export function CompanionProfileEditor() {
@@ -138,17 +174,125 @@ export function CompanionProfileEditor() {
   const [saving, setSaving] = useState(false);
   const [savingPricing, setSavingPricing] = useState(false);
   const [savingAvailability, setSavingAvailability] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadingRole, setUploadingRole] = useState<"profile" | "cover" | "album" | null>(null);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [photoBusy, setPhotoBusy] = useState<string | null>(null);
-  const [ownVideos, setOwnVideos] = useState<OwnVideo[]>([]);
+  const [uploadingRole, setUploadingRole] = useState<"main" | null>(null);
   const [pricing, setPricing] = useState<PricingData>(EMPTY_PRICING);
   const [availabilityDays, setAvailabilityDays] = useState<AvailabilityDay[]>([]);
+  const [baseline, setBaseline] = useState<EditorBaseline | null>(null);
 
   function notify(message: string, tone?: "success" | "error" | "info") {
     toast(message, tone ?? toastToneFromMessage(message));
   }
+
+  function getDraft(): EditorBaseline {
+    return {
+      displayName,
+      birthDate,
+      bio,
+      sexualPreference,
+      position,
+      penisSizeCm,
+      socialLinks,
+      whatsapp,
+      cep,
+      neighborhood,
+      city,
+      state,
+      selectedTagIds,
+      customTagNames,
+      pricing,
+      availabilityDays,
+    };
+  }
+
+  function applyBaseline(next: EditorBaseline) {
+    setDisplayName(next.displayName);
+    setBirthDate(next.birthDate);
+    setBio(next.bio);
+    setSexualPreference(next.sexualPreference);
+    setPosition(next.position);
+    setPenisSizeCm(next.penisSizeCm);
+    setSocialLinks(next.socialLinks);
+    setWhatsapp(next.whatsapp);
+    setCep(next.cep);
+    setNeighborhood(next.neighborhood);
+    setCity(next.city);
+    setState(next.state);
+    setSelectedTagIds(next.selectedTagIds);
+    setCustomTagNames(next.customTagNames);
+    setPricing(next.pricing);
+    setAvailabilityDays(next.availabilityDays);
+    setTagInput("");
+  }
+
+  const dirtyState = useMemo(() => {
+    if (!baseline) {
+      return { any: false, profile: false, pricing: false, availability: false };
+    }
+    const draft = normalizeBaseline({
+      displayName,
+      birthDate,
+      bio,
+      sexualPreference,
+      position,
+      penisSizeCm,
+      socialLinks,
+      whatsapp,
+      cep,
+      neighborhood,
+      city,
+      state,
+      selectedTagIds,
+      customTagNames,
+      pricing,
+      availabilityDays,
+    });
+    const saved = normalizeBaseline(baseline);
+    const pricingDirty = JSON.stringify(draft.pricing) !== JSON.stringify(saved.pricing);
+    const availabilityDirty =
+      JSON.stringify(draft.availabilityDays) !== JSON.stringify(saved.availabilityDays);
+    const profileDirty =
+      baselineKey({ ...draft, pricing: saved.pricing, availabilityDays: saved.availabilityDays }) !==
+      baselineKey({ ...saved, pricing: saved.pricing, availabilityDays: saved.availabilityDays });
+    return {
+      any: profileDirty || pricingDirty || availabilityDirty,
+      profile: profileDirty,
+      pricing: pricingDirty,
+      availability: availabilityDirty,
+    };
+  }, [
+    baseline,
+    displayName,
+    birthDate,
+    bio,
+    sexualPreference,
+    position,
+    penisSizeCm,
+    socialLinks,
+    whatsapp,
+    cep,
+    neighborhood,
+    city,
+    state,
+    selectedTagIds,
+    customTagNames,
+    pricing,
+    availabilityDays,
+  ]);
+
+  const isDirty = dirtyState.any;
+  const isBusy = saving || savingPricing || savingAvailability || savingAll;
+
+  useEffect(() => {
+    if (!isDirty) return;
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -161,9 +305,17 @@ export function CompanionProfileEditor() {
   useEffect(() => {
     if (loading || !window.location.hash) return;
     const id = window.location.hash.slice(1);
+    if (id === "fotos") {
+      router.replace("/painel/fotos");
+      return;
+    }
+    if (id === "videos") {
+      router.replace("/painel/videos");
+      return;
+    }
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [loading]);
+  }, [loading, router]);
 
   async function loadAll() {
     try {
@@ -173,18 +325,16 @@ export function CompanionProfileEditor() {
         return;
       }
 
-      const [data, tagsRes, videosRes, pricingRes, availabilityRes] = await Promise.all([
+      const [data, tagsRes, pricingRes, availabilityRes] = await Promise.all([
         apiFetch<Profile>("/v1/companion/profile"),
         fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1/tags`).then(
           (r) => (r.ok ? r.json() : { data: [] }),
         ),
-        apiFetch<{ data: OwnVideo[] }>("/v1/companion/videos"),
         apiFetch<PricingData>("/v1/companion/pricing"),
         apiFetch<{ days: AvailabilityDay[] }>("/v1/companion/availability"),
       ]);
 
       setProfile(data);
-      setOwnVideos(videosRes.data ?? []);
       setPricing(pricingRes ?? EMPTY_PRICING);
       setAvailabilityDays(availabilityRes.days ?? []);
       setAvailableTags(tagsRes.data ?? []);
@@ -195,6 +345,7 @@ export function CompanionProfileEditor() {
       setPosition(data.position ?? "");
       setPenisSizeCm(data.penisSizeCm != null ? String(data.penisSizeCm) : "");
       setSocialLinks({ ...EMPTY_SOCIAL_LINKS, ...data.socialLinks });
+      setWhatsapp("");
       setCep(data.cep ?? "");
       setNeighborhood(data.neighborhood ?? "");
       setCity(data.city ?? "");
@@ -202,6 +353,26 @@ export function CompanionProfileEditor() {
       setSelectedTagIds(data.tags?.map((t) => t.id) ?? data.tagIds ?? []);
       setCustomTagNames([]);
       setTagInput("");
+      setBaseline(
+        normalizeBaseline({
+          displayName: data.displayName ?? "",
+          birthDate: data.birthDate ?? "",
+          bio: data.bio ?? "",
+          sexualPreference: data.sexualPreference ?? "",
+          position: data.position ?? "",
+          penisSizeCm: data.penisSizeCm != null ? String(data.penisSizeCm) : "",
+          socialLinks: { ...EMPTY_SOCIAL_LINKS, ...data.socialLinks },
+          whatsapp: "",
+          cep: data.cep ?? "",
+          neighborhood: data.neighborhood ?? "",
+          city: data.city ?? "",
+          state: data.state ?? "",
+          selectedTagIds: data.tags?.map((t) => t.id) ?? data.tagIds ?? [],
+          customTagNames: [],
+          pricing: pricingRes ?? EMPTY_PRICING,
+          availabilityDays: availabilityRes.days ?? [],
+        }),
+      );
     } catch {
       clearAccessToken();
       router.replace("/login");
@@ -264,7 +435,7 @@ export function CompanionProfileEditor() {
     });
   }
 
-  async function saveProfile() {
+  async function saveProfile(options?: { silent?: boolean }) {
     setSaving(true);
     try {
       const data = await apiFetch<Profile>("/v1/companion/profile", {
@@ -287,39 +458,68 @@ export function CompanionProfileEditor() {
         }),
       });
       setProfile(data);
-      setDisplayName(data.displayName ?? "");
-      setBirthDate(data.birthDate ?? "");
-      setBio(data.bio ?? "");
-      setSexualPreference(data.sexualPreference ?? "");
-      setPosition(data.position ?? "");
-      setPenisSizeCm(data.penisSizeCm != null ? String(data.penisSizeCm) : "");
-      setSocialLinks({ ...EMPTY_SOCIAL_LINKS, ...data.socialLinks });
-      setCep(data.cep ?? "");
-      setNeighborhood(data.neighborhood ?? "");
-      setCity(data.city ?? "");
-      setState(data.state ?? "");
-      setSelectedTagIds(data.tags?.map((t) => t.id) ?? data.tagIds ?? []);
+      const nextProfile = {
+        displayName: data.displayName ?? "",
+        birthDate: data.birthDate ?? "",
+        bio: data.bio ?? "",
+        sexualPreference: data.sexualPreference ?? "",
+        position: data.position ?? "",
+        penisSizeCm: data.penisSizeCm != null ? String(data.penisSizeCm) : "",
+        socialLinks: { ...EMPTY_SOCIAL_LINKS, ...data.socialLinks } as SocialLinks,
+        whatsapp: "",
+        cep: data.cep ?? "",
+        neighborhood: data.neighborhood ?? "",
+        city: data.city ?? "",
+        state: data.state ?? "",
+        selectedTagIds: data.tags?.map((t) => t.id) ?? data.tagIds ?? [],
+        customTagNames: [] as string[],
+      };
+      setDisplayName(nextProfile.displayName);
+      setBirthDate(nextProfile.birthDate);
+      setBio(nextProfile.bio);
+      setSexualPreference(nextProfile.sexualPreference);
+      setPosition(nextProfile.position);
+      setPenisSizeCm(nextProfile.penisSizeCm);
+      setSocialLinks(nextProfile.socialLinks);
+      setWhatsapp("");
+      setCep(nextProfile.cep);
+      setNeighborhood(nextProfile.neighborhood);
+      setCity(nextProfile.city);
+      setState(nextProfile.state);
+      setSelectedTagIds(nextProfile.selectedTagIds);
       setCustomTagNames([]);
       setTagInput("");
+      setBaseline((current) =>
+        normalizeBaseline({
+          ...(current ?? getDraft()),
+          ...nextProfile,
+          pricing: current?.pricing ?? pricing,
+          availabilityDays: current?.availabilityDays ?? availabilityDays,
+        }),
+      );
 
       const tagsRes = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1/tags`,
       ).then((r) => (r.ok ? r.json() : { data: [] }));
       setAvailableTags(tagsRes.data ?? []);
 
-      const successMsg =
-        data.status === "pending"
-          ? "Perfil salvo com sucesso! Aguardando moderação para publicação na plataforma."
-          : "Perfil salvo com sucesso! As alterações já refletem no seu perfil.";
-      notify(data.warning ? `${successMsg} ${data.warning}` : successMsg, data.warning ? "info" : "success");
+      if (!options?.silent) {
+        const successMsg =
+          data.status === "pending"
+            ? "Perfil salvo com sucesso! Aguardando moderação para publicação na plataforma."
+            : "Perfil salvo com sucesso! As alterações já refletem no seu perfil.";
+        notify(data.warning ? `${successMsg} ${data.warning}` : successMsg, data.warning ? "info" : "success");
+      }
+      return true;
     } catch (err) {
       notify(err instanceof Error ? err.message : "Erro ao salvar", "error");
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
-  async function savePricing() {
+  async function savePricing(options?: { silent?: boolean }) {
     setSavingPricing(true);
     try {
       const updated = await apiFetch<PricingData>("/v1/companion/pricing", {
@@ -327,9 +527,17 @@ export function CompanionProfileEditor() {
         body: JSON.stringify(pricing),
       });
       setPricing(updated);
-      notify("Valores salvos com sucesso.", "success");
+      setBaseline((current) =>
+        normalizeBaseline({
+          ...(current ?? getDraft()),
+          pricing: updated,
+        }),
+      );
+      if (!options?.silent) notify("Valores salvos com sucesso.", "success");
+      return true;
     } catch (err) {
       notify(err instanceof Error ? err.message : "Erro ao salvar valores", "error");
+      return false;
     } finally {
       setSavingPricing(false);
     }
@@ -339,7 +547,7 @@ export function CompanionProfileEditor() {
     setAvailabilityDays((prev) => prev.map((day, i) => (i === index ? { ...day, ...patch } : day)));
   }
 
-  async function saveAvailability() {
+  async function saveAvailability(options?: { silent?: boolean }) {
     setSavingAvailability(true);
     try {
       const res = await apiFetch<{ days: AvailabilityDay[] }>("/v1/companion/availability", {
@@ -347,12 +555,59 @@ export function CompanionProfileEditor() {
         body: JSON.stringify({ days: availabilityDays }),
       });
       setAvailabilityDays(res.days);
-      notify("Horários salvos com sucesso.", "success");
+      setBaseline((current) =>
+        normalizeBaseline({
+          ...(current ?? getDraft()),
+          availabilityDays: res.days,
+        }),
+      );
+      if (!options?.silent) notify("Horários salvos com sucesso.", "success");
+      return true;
     } catch (err) {
       notify(err instanceof Error ? err.message : "Erro ao salvar horários", "error");
+      return false;
     } finally {
       setSavingAvailability(false);
     }
+  }
+
+  async function saveAllChanges() {
+    if (!dirtyState.any || isBusy) return;
+    const toSave = {
+      profile: dirtyState.profile,
+      pricing: dirtyState.pricing,
+      availability: dirtyState.availability,
+    };
+    setSavingAll(true);
+    try {
+      const parts: string[] = [];
+      if (toSave.profile) {
+        const ok = await saveProfile({ silent: true });
+        if (!ok) return;
+        parts.push("perfil");
+      }
+      if (toSave.pricing) {
+        const ok = await savePricing({ silent: true });
+        if (!ok) return;
+        parts.push("valores");
+      }
+      if (toSave.availability) {
+        const ok = await saveAvailability({ silent: true });
+        if (!ok) return;
+        parts.push("horários");
+      }
+      if (parts.length > 0) {
+        notify(`Alterações salvas (${parts.join(", ")}).`, "success");
+      }
+    } finally {
+      setSavingAll(false);
+    }
+  }
+
+  function discardChanges() {
+    if (!baseline) return;
+    applyBaseline(baseline);
+    notify("Alterações descartadas.", "info");
   }
 
   async function uploadMedia(
@@ -381,20 +636,13 @@ export function CompanionProfileEditor() {
     }
   }
 
-  async function uploadPhoto(file: File, role: "profile" | "cover" | "album" = "album") {
+  async function uploadPhoto(file: File) {
     setUploading(true);
-    setUploadingRole(role);
+    setUploadingRole("main");
     try {
-      await uploadMedia("/v1/companion/photos", file, { role });
+      await uploadMedia("/v1/companion/photos", file, { role: "main" });
       await loadAll();
-      notify(
-        role === "profile"
-          ? "Foto de perfil atualizada!"
-          : role === "cover"
-            ? "Foto de capa atualizada!"
-            : "Foto adicionada ao álbum!",
-        "success",
-      );
+      notify("Foto principal atualizada!", "success");
     } catch (err) {
       notify(err instanceof Error ? err.message : "Erro no upload", "error");
     } finally {
@@ -409,75 +657,12 @@ export function CompanionProfileEditor() {
     );
   }
 
-  function profilePhoto() {
-    return sortedPhotos().find((p) => p.isProfile) ?? null;
-  }
-
-  function coverPhoto() {
-    return sortedPhotos().find((p) => p.isCover) ?? null;
-  }
-
-  function albumPhotos() {
-    return sortedPhotos().filter((p) => !p.isProfile && !p.isCover);
-  }
-
-  async function movePhoto(photoId: string, direction: -1 | 1) {
-    const album = albumPhotos();
-    const index = album.findIndex((p) => p.id === photoId);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= album.length) return;
-
-    const nextAlbum = [...album];
-    [nextAlbum[index], nextAlbum[target]] = [nextAlbum[target], nextAlbum[index]];
-
-    const featuredIds = new Set(
-      sortedPhotos()
-        .filter((p) => p.isProfile || p.isCover)
-        .map((p) => p.id),
+  function mainPhoto() {
+    return (
+      sortedPhotos().find((p) => p.isProfile || p.isCover) ??
+      sortedPhotos()[0] ??
+      null
     );
-    const featured = sortedPhotos().filter((p) => featuredIds.has(p.id));
-    const photoIds = [...featured.map((p) => p.id), ...nextAlbum.map((p) => p.id)];
-
-    setPhotoBusy(photoId);
-    try {
-      await apiFetch("/v1/companion/photos/reorder", {
-        method: "PATCH",
-        body: JSON.stringify({ photoIds }),
-      });
-      await loadAll();
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Erro ao reordenar fotos", "error");
-    } finally {
-      setPhotoBusy(null);
-    }
-  }
-
-  async function deletePhoto(photoId: string) {
-    if (!confirm("Excluir esta foto?")) return;
-
-    setPhotoBusy(photoId);
-    try {
-      await apiFetch(`/v1/companion/photos/${photoId}`, { method: "DELETE" });
-      await loadAll();
-      notify("Foto excluída.", "success");
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Erro ao excluir foto", "error");
-    } finally {
-      setPhotoBusy(null);
-    }
-  }
-
-  async function uploadVideo(file: File) {
-    setUploadingVideo(true);
-    try {
-      await uploadMedia("/v1/companion/videos", file);
-      await loadAll();
-      notify("Vídeo enviado! Aguardando aprovação.", "success");
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Erro no upload de vídeo", "error");
-    } finally {
-      setUploadingVideo(false);
-    }
   }
 
   if (loading) {
@@ -495,7 +680,7 @@ export function CompanionProfileEditor() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text-primary">Editar perfil</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Atualize seus dados, valores, horários, fotos e mídia.
+          Atualize seus dados, valores, horários e foto principal. Álbum e vídeos ficam no menu.
         </p>
       </div>
 
@@ -517,18 +702,44 @@ export function CompanionProfileEditor() {
         </section>
       )}
 
-        <section className="sticky top-0 z-20 mt-6 rounded-2xl border border-purple-deep/30 bg-bg-secondary/95 p-4 backdrop-blur sm:hidden">
-          <button
-            onClick={saveProfile}
-            disabled={saving}
-            className="w-full rounded-xl bg-purple-deep py-3 text-sm font-medium text-white hover:bg-purple-light disabled:opacity-50"
-          >
-            {saving ? "Salvando..." : "Salvar perfil completo"}
-          </button>
-        </section>
+      {isDirty && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 px-3 md:bottom-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div className="pointer-events-auto mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-gold/40 bg-bg-secondary/95 px-4 py-3 shadow-lg shadow-black/40 backdrop-blur md:max-w-2xl">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-text-primary">Alterações não salvas</p>
+              <p className="truncate text-xs text-text-muted">
+                {[
+                  dirtyState.profile ? "dados" : null,
+                  dirtyState.pricing ? "valores" : null,
+                  dirtyState.availability ? "horários" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={discardChanges}
+              disabled={isBusy}
+              className="shrink-0 rounded-xl border border-border-subtle px-3 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50"
+            >
+              Descartar
+            </button>
+            <button
+              type="button"
+              onClick={saveAllChanges}
+              disabled={isBusy}
+              className="shrink-0 rounded-xl bg-purple-deep px-4 py-2 text-sm font-medium text-white hover:bg-purple-light disabled:opacity-50"
+            >
+              {isBusy ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      )}
 
         <section id="dados" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
-          <h2 className="text-lg font-semibold text-text-primary">Dados do perfil</h2>          <p className="mt-1 text-sm text-text-muted">
+          <h2 className="text-lg font-semibold text-text-primary">Dados do perfil</h2>
+          <p className="mt-1 text-sm text-text-muted">
             Nome, idade e biografia exibidos nos cards e na página pública.
           </p>
 
@@ -568,7 +779,7 @@ export function CompanionProfileEditor() {
         <section id="completar" className="mt-8 scroll-mt-24 rounded-2xl border border-purple-deep/20 bg-bg-secondary p-6">
           <h2 className="text-lg font-semibold text-text-primary">Completar perfil</h2>
           <p className="mt-1 text-sm text-text-muted">
-            Fotos principais, preferência, posição, dote e tags — preenchidos após o cadastro inicial.
+            Foto principal, preferência, posição, dote e tags — preenchidos após o cadastro inicial.
           </p>
 
           <div
@@ -580,97 +791,63 @@ export function CompanionProfileEditor() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-gold">
                   Essencial para aparecer
                 </p>
-                <h3 className="mt-1 text-base font-semibold text-text-primary">Fotos principais</h3>
+                <h3 className="mt-1 text-base font-semibold text-text-primary">Foto principal</h3>
               </div>
             </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-gold/25 bg-bg-primary/50 p-4">
-                <div className="flex items-start gap-4">
-                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-gold/50 bg-bg-tertiary">
-                    {profilePhoto() ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={profilePhoto()!.thumbUrl ?? profilePhoto()!.url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-2xl text-text-muted">
-                        ?
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-text-primary">Foto de perfil</p>
-                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                      Aparece nos cards da home e nas listagens.
-                    </p>
-                    <label className="mt-3 inline-flex cursor-pointer rounded-xl bg-purple-deep px-4 py-2 text-sm font-medium text-white hover:bg-purple-light">
-                      {uploadingRole === "profile"
-                        ? "Enviando..."
-                        : profilePhoto()
-                          ? "Trocar foto de perfil"
-                          : "Adicionar foto de perfil"}
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        disabled={uploading}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          e.target.value = "";
-                          if (file) uploadPhoto(file, "profile");
-                        }}
-                      />
-                    </label>
-                  </div>
+            <div className="mt-4 rounded-xl border border-gold/25 bg-bg-primary/50 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="relative mx-auto h-36 w-28 shrink-0 overflow-hidden rounded-2xl border-2 border-gold/50 bg-bg-tertiary sm:mx-0">
+                  {mainPhoto() ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={mainPhoto()!.thumbUrl ?? mainPhoto()!.url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-2xl text-text-muted">
+                      ?
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              <div className="rounded-xl border border-gold/25 bg-bg-primary/50 p-4">
-                <div className="space-y-3">
-                  <div className="relative aspect-[16/9] overflow-hidden rounded-xl border border-border-subtle bg-bg-tertiary">
-                    {coverPhoto() ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={coverPhoto()!.thumbUrl ?? coverPhoto()!.url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-sm text-text-muted">
-                        Sem capa
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-text-primary">Foto de capa</p>
-                    <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                      Aparece no topo da página pública do seu perfil. Prefira uma imagem mais larga.
-                    </p>
-                    <label className="mt-3 inline-flex cursor-pointer rounded-xl border border-border-subtle bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-primary hover:border-purple-deep/40">
-                      {uploadingRole === "cover"
-                        ? "Enviando..."
-                        : coverPhoto()
-                          ? "Trocar foto de capa"
-                          : "Adicionar foto de capa"}
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        disabled={uploading}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          e.target.value = "";
-                          if (file) uploadPhoto(file, "cover");
-                        }}
-                      />
-                    </label>
-                  </div>
+                <div className="min-w-0 flex-1 text-center sm:text-left">
+                  <p className="font-semibold text-text-primary">Uma foto para tudo</p>
+                  <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                    Aparece nos cards da home, nas buscas e no topo da sua página pública.
+                  </p>
+                  <label className="mt-3 inline-flex cursor-pointer rounded-xl bg-purple-deep px-4 py-2 text-sm font-medium text-white hover:bg-purple-light">
+                    {uploadingRole === "main"
+                      ? "Enviando..."
+                      : mainPhoto()
+                        ? "Trocar foto principal"
+                        : "Adicionar foto principal"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (file) uploadPhoto(file);
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
             </div>
+            <p className="mt-4 text-xs text-text-muted">
+              Galeria pública (álbum):{" "}
+              <Link href="/painel/fotos" className="text-purple-light hover:underline">
+                menu Fotos
+              </Link>
+              . Vídeos:{" "}
+              <Link href="/painel/videos" className="text-purple-light hover:underline">
+                menu Vídeos
+              </Link>
+              .
+            </p>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -697,7 +874,7 @@ export function CompanionProfileEditor() {
                 className={inputClass}
               >
                 <option value="">Selecione</option>
-                {POSITIONS.map((p) => (
+                {PROFILE_POSITIONS.map((p) => (
                   <option key={p.value} value={p.value}>
                     {p.label}
                   </option>
@@ -1020,11 +1197,15 @@ export function CompanionProfileEditor() {
 
           <button
             type="button"
-            onClick={savePricing}
-            disabled={savingPricing}
+            onClick={() => savePricing()}
+            disabled={isBusy || !dirtyState.pricing}
             className="mt-5 rounded-xl bg-purple-deep px-6 py-3 text-sm font-medium text-white hover:bg-purple-light disabled:opacity-50"
           >
-            {savingPricing ? "Salvando..." : "Salvar valores"}
+            {savingPricing
+              ? "Salvando..."
+              : dirtyState.pricing
+                ? "Salvar valores"
+                : "Valores salvos"}
           </button>
         </section>
 
@@ -1077,21 +1258,26 @@ export function CompanionProfileEditor() {
 
           <button
             type="button"
-            onClick={saveAvailability}
-            disabled={savingAvailability}
+            onClick={() => saveAvailability()}
+            disabled={isBusy || !dirtyState.availability}
             className="mt-5 rounded-xl bg-purple-deep px-6 py-3 text-sm font-medium text-white hover:bg-purple-light disabled:opacity-50"
           >
-            {savingAvailability ? "Salvando..." : "Salvar horários"}
+            {savingAvailability
+              ? "Salvando..."
+              : dirtyState.availability
+                ? "Salvar horários"
+                : "Horários salvos"}
           </button>
         </section>
 
-        <div className="mt-6">
+        <div className={`mt-6 ${isDirty ? "pb-28" : ""}`}>
           <button
-            onClick={saveProfile}
-            disabled={saving}
+            type="button"
+            onClick={saveAllChanges}
+            disabled={isBusy || !isDirty}
             className="rounded-xl bg-purple-deep px-8 py-3 text-sm font-medium text-white hover:bg-purple-light disabled:opacity-50"
           >
-            {saving ? "Salvando..." : "Salvar perfil completo"}
+            {isBusy ? "Salvando..." : isDirty ? "Salvar alterações" : "Tudo salvo"}
           </button>
         </div>
 
@@ -1109,118 +1295,14 @@ export function CompanionProfileEditor() {
           )}
         </div>
 
-        <section id="fotos" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
-          <h2 className="text-lg font-semibold text-text-primary">Álbum de fotos</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Fotos extras da galeria pública. A foto de perfil e a foto de capa ficam em{" "}
-            <a href="#fotos-principais" className="text-purple-light hover:underline">
-              Completar perfil
-            </a>
-            .
-            {profile?.status !== "approved" || !profile?.isPublic ? (
-              <> A visibilidade na busca depende da moderação do perfil.</>
-            ) : null}
-          </p>
-
-          <label className="mt-4 inline-flex cursor-pointer rounded-xl border border-dashed border-border-subtle px-6 py-4 text-sm text-text-secondary hover:border-purple-deep">
-            {uploadingRole === "album" ? "Enviando..." : "Adicionar ao álbum"}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              disabled={uploading}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) uploadPhoto(file, "album");
-              }}
-            />
-          </label>
-
-          {albumPhotos().length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {albumPhotos().map((photo, index, photos) => (
-                <div key={photo.id} className="overflow-hidden rounded-xl border border-border-subtle">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo.thumbUrl ?? photo.url}
-                    alt=""
-                    className="aspect-[3/4] w-full object-cover"
-                  />
-                  <div className="space-y-2 p-2">
-                    <p className="text-center text-xs text-text-muted">Álbum</p>
-                    <div className="flex flex-wrap justify-center gap-1">
-                      <button
-                        type="button"
-                        disabled={photoBusy === photo.id || index === 0}
-                        onClick={() => movePhoto(photo.id, -1)}
-                        className="rounded-lg border border-border-subtle px-2 py-1 text-[10px] text-text-secondary hover:border-purple-deep/40 disabled:opacity-40"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        disabled={photoBusy === photo.id || index === photos.length - 1}
-                        onClick={() => movePhoto(photo.id, 1)}
-                        className="rounded-lg border border-border-subtle px-2 py-1 text-[10px] text-text-secondary hover:border-purple-deep/40 disabled:opacity-40"
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        disabled={photoBusy === photo.id}
-                        onClick={() => deletePhoto(photo.id)}
-                        className="rounded-lg border border-red-500/30 px-2 py-1 text-[10px] text-red-400 hover:bg-red-500/10"
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-text-muted">
-              Nenhuma foto no álbum ainda. As fotos principais ficam acima, em Completar perfil.
-            </p>
-          )}
-        </section>
-
-        <section id="videos" className="mt-8 scroll-mt-24 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
-          <h2 className="text-lg font-semibold text-text-primary">Vídeos</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            MP4 ou WebM — máx. 50MB. Aguardam moderação antes de aparecer no perfil público.
-          </p>
-          <label className="mt-4 inline-flex cursor-pointer rounded-xl border border-dashed border-border-subtle px-6 py-4 text-sm text-text-secondary hover:border-purple-deep">
-            {uploadingVideo ? "Enviando..." : "Selecionar vídeo"}
-            <input
-              type="file"
-              accept="video/mp4,video/webm"
-              className="hidden"
-              disabled={uploadingVideo}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) uploadVideo(file);
-              }}
-            />
-          </label>
-          {ownVideos.length > 0 && (
-            <ul className="mt-4 space-y-2">
-              {ownVideos.map((video) => (
-                <li
-                  key={video.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border-subtle bg-bg-tertiary px-4 py-3 text-sm"
-                >
-                  <span className="text-text-primary">{video.title}</span>
-                  <span className="text-xs text-text-muted">
-                    {mediaStatusLabel(video.status)} ·{" "}
-                    {new Date(video.createdAt).toLocaleDateString("pt-BR")}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="mt-8 flex flex-wrap gap-3 text-sm">
+          <Link href="/painel/fotos" className="text-purple-light hover:underline">
+            Gerenciar álbum de fotos →
+          </Link>
+          <Link href="/painel/videos" className="text-purple-light hover:underline">
+            Gerenciar vídeos →
+          </Link>
+        </div>
     </>
   );
 }

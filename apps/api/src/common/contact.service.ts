@@ -12,7 +12,21 @@ export class ContactService {
   private readonly secret: string;
 
   constructor(config: ConfigService) {
-    this.secret = config.get('WHATSAPP_ENCRYPTION_KEY') ?? config.get('JWT_SECRET', 'dev-secret');
+    const dedicated = (config.get<string>('WHATSAPP_ENCRYPTION_KEY') ?? '').trim();
+    const jwt = (config.get<string>('JWT_SECRET') ?? '').trim();
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (dedicated) {
+      this.secret = dedicated;
+    } else if (!isProd && jwt) {
+      this.secret = jwt;
+    } else if (!isProd) {
+      this.secret = 'dev-secret';
+    } else {
+      throw new Error(
+        'WHATSAPP_ENCRYPTION_KEY must be set in production (do not reuse JWT_SECRET).',
+      );
+    }
   }
 
   encryptPhone(phone: string): string | null {
@@ -43,7 +57,7 @@ export class ContactService {
     if (!phone) {
       return { hasWhatsApp: false as const };
     }
-    const message = `Olá ${displayName}! Vi seu perfil no Acompanhante e gostaria de mais informações.`;
+    const message = `Olá ${displayName}! Vi seu perfil no Clube dos Garotos e gostaria de mais informações.`;
     return {
       hasWhatsApp: true as const,
       whatsappUrl: whatsappToUrl(phone, message),

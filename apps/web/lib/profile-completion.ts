@@ -28,8 +28,8 @@ type ProfileForCompletion = {
 
 export function computeProfileCompletion(profile: ProfileForCompletion): ProfileCompletion {
   const photos = (profile.photos ?? []) as Array<{ isProfile?: boolean; isCover?: boolean }>;
-  const hasProfilePhoto = photos.some((p) => p.isProfile) || photos.length > 0;
-  const hasCoverPhoto = photos.some((p) => p.isCover) || photos.length > 0;
+  const hasMainPhoto =
+    photos.some((p) => p.isProfile || p.isCover) || photos.length > 0;
   const tagCount = profile.tags?.length ?? profile.tagIds?.length ?? 0;
 
   const checks: ProfileCompletionCheck[] = [
@@ -44,8 +44,7 @@ export function computeProfileCompletion(profile: ProfileForCompletion): Profile
       done: !!(profile.city && profile.state),
     },
     { key: "cep", label: "CEP (proximidade)", done: !!profile.hasLocation },
-    { key: "photo", label: "Foto de perfil", done: hasProfilePhoto },
-    { key: "cover", label: "Foto de capa", done: hasCoverPhoto },
+    { key: "photo", label: "Foto principal", done: hasMainPhoto },
     { key: "tags", label: "Tags do perfil", done: tagCount > 0 },
     { key: "whatsapp", label: "WhatsApp", done: !!profile.hasWhatsApp },
   ];
@@ -55,7 +54,7 @@ export function computeProfileCompletion(profile: ProfileForCompletion): Profile
 
   return {
     percent: Math.round((doneCount / checks.length) * 100),
-    readyForReview: doneCount === checks.length && hasProfilePhoto,
+    readyForReview: doneCount === checks.length && hasMainPhoto,
     missing,
     checks,
   };

@@ -31,7 +31,7 @@ const ReportContentModal = dynamic(
   },
 );
 
-type ProfilePhoto = { id: string; url: string; isCover: boolean };
+type ProfilePhoto = { id: string; url: string; isCover: boolean; isProfile?: boolean };
 type SocialLinks = Partial<Record<"privacy" | "onlyfans" | "x" | "instagram", string>>;
 
 export type ProfilePageData = {
@@ -96,9 +96,11 @@ type ProfilePageViewProps = {
 };
 
 function positionEmoji(position?: string | null) {
-  if (position === "Ativo") return "🔥";
-  if (position === "Passivo") return "🍑";
-  if (position === "Versátil") return "⚡";
+  if (!position) return "👤";
+  if (position.startsWith("Ativo") && position.includes("Passivo")) return "🔄";
+  if (position.startsWith("Ativo")) return "🔥";
+  if (position.startsWith("Passivo")) return "🍑";
+  if (position.startsWith("Versátil")) return "⚡";
   return "👤";
 }
 
@@ -306,10 +308,9 @@ function ProfileWhatsAppSection({
   profile: ProfilePageData;
   variant?: "default" | "compact" | "sticky";
 }) {
-  const showWhatsApp =
-    (profile.hasWhatsApp && profile.whatsappUrl && profile.profileId) || profile.isMock;
-
-  if (!showWhatsApp) return null;
+  if (!(profile.hasWhatsApp && profile.whatsappUrl && profile.profileId)) {
+    return null;
+  }
 
   const wrapperClass =
     variant === "sticky"
@@ -335,23 +336,12 @@ function ProfileWhatsAppSection({
         {variant === "compact" && (
           <p className="mb-2 text-xs text-text-muted">Contato profissional apenas.</p>
         )}
-        {profile.hasWhatsApp && profile.whatsappUrl && profile.profileId ? (
-          <WhatsAppButton
-            profileId={profile.profileId}
-            url={profile.whatsappUrl}
-            label={variant === "compact" ? "Me chama no WhatsApp" : "Conversar no WhatsApp"}
-            fullWidth
-          />
-        ) : (
-          <a
-            href={`https://wa.me/5511999999999?text=${encodeURIComponent("Olá! Vi seu perfil no Acompanhante e gostaria de mais informações.")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-success py-3.5 font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Conversar no WhatsApp
-          </a>
-        )}
+        <WhatsAppButton
+          profileId={profile.profileId}
+          url={profile.whatsappUrl}
+          label={variant === "compact" ? "Me chama no WhatsApp" : "Conversar no WhatsApp"}
+          fullWidth
+        />
       </div>
     </section>
   );
@@ -368,24 +358,29 @@ export function ProfilePageView({
   backHref = "/",
   backLabel = "← Voltar",
 }: ProfilePageViewProps) {
+  // API já envia só álbum; capa/perfil ficam em coverPhotoUrl (hero), não na sessão Fotos.
+  const albumPhotos = profile.photos.filter((p) => !p.isCover && !p.isProfile);
   const heroUrl =
     profile.coverPhotoUrl ??
     profile.photos.find((p) => p.isCover)?.url ??
-    profile.photos[0]?.url;
+    albumPhotos[0]?.url;
 
-  const showWhatsApp =
-    (profile.hasWhatsApp && profile.whatsappUrl && profile.profileId) || profile.isMock;
+  const showWhatsApp = Boolean(
+    profile.hasWhatsApp && profile.whatsappUrl && profile.profileId,
+  );
 
   const premiumFrame = profile.isPremium
     ? "border-gold/40 ring-1 ring-gold/20"
     : "border-border-subtle";
 
   const galleryPhotos =
-    profile.photos.length > 0
-      ? profile.photos
-      : heroUrl
-        ? [{ id: "cover", url: heroUrl, isCover: true }]
-        : [];
+    heroUrl && profile.coverPhotoUrl
+      ? [{ id: "cover", url: profile.coverPhotoUrl, isCover: true as const }, ...albumPhotos]
+      : albumPhotos.length > 0
+        ? albumPhotos
+        : heroUrl
+          ? [{ id: "cover", url: heroUrl, isCover: true as const }]
+          : [];
   const heroIndex = resolvePhotoIndex(galleryPhotos, heroUrl);
 
   return (
@@ -492,6 +487,17 @@ export function ProfilePageView({
 
         <SocialLinkButtons links={profile.socialLinks} />
 
+        {videos.length > 0 && (
+          <section id="videos">
+            <SectionHeading emoji="🎬">Vídeos</SectionHeading>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {videos.map((video) => (
+                <VideoCard key={video.id} video={video} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {profile.pricing?.mode === "consult" && (
           <section>
             <SectionHeading>Valores</SectionHeading>
@@ -576,22 +582,11 @@ export function ProfilePageView({
           </section>
         )}
 
-        {galleryPhotos.length > 0 && (
-          <section>
+        {albumPhotos.length > 0 && (
+          <section id="fotos">
             <SectionHeading emoji="📸">Fotos</SectionHeading>
             <div className="mt-3">
-              <ProfilePhotoGrid />
-            </div>
-          </section>
-        )}
-
-        {videos.length > 0 && (
-          <section>
-            <SectionHeading emoji="🎬">Vídeos</SectionHeading>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {videos.map((video) => (
-                <VideoCard key={video.id} video={video} />
-              ))}
+              <ProfilePhotoGrid albumOnly />
             </div>
           </section>
         )}

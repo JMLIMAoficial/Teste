@@ -17,8 +17,10 @@ export async function generateMetadata({
     name: cat?.tag.name,
   });
   return {
-    title: meta?.title ?? `${cat?.tag.name ?? slug} — Acompanhantes`,
-    description: meta?.description,
+    title: meta?.title ?? `${cat?.tag.name ?? slug} — garotos de programa`,
+    description:
+      meta?.description ??
+      `Garotos de programa com a categoria ${cat?.tag.name ?? slug} no Clube dos Garotos.`,
     alternates: meta?.canonical ? { canonical: meta.canonical } : undefined,
   };
 }
@@ -42,7 +44,8 @@ export default async function CategoriaPage({
         </Link>
         <h1 className="mt-4 text-3xl font-bold text-text-primary">{data.tag.name}</h1>
         <p className="mt-2 text-text-secondary">
-          {data.total} perfil{data.total !== 1 ? "s" : ""} com esta categoria
+          Garotos de programa com a categoria {data.tag.name}. {data.total} perfil
+          {data.total !== 1 ? "s" : ""}.
         </p>
 
         {data.profiles.length === 0 ? (

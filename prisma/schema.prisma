@@ -150,6 +150,10 @@ enum ProfilePosition {
   active
   passive
   versatile
+  active_passive
+  active_liberal
+  passive_liberal
+  versatile_liberal
 
   @@schema("profiles")
 }
@@ -757,5 +761,38 @@ model VerificationRequest {
   @@index([status, createdAt])
   @@index([profileId, createdAt])
   @@map("verification_requests")
+  @@schema("platform")
+}
+
+enum BoostRequestType {
+  premium
+  featured
+
+  @@schema("platform")
+}
+
+enum BoostRequestStatus {
+  pending
+  approved
+  rejected
+
+  @@schema("platform")
+}
+
+model BoostRequest {
+  id              String             @id @default(uuid()) @db.Uuid
+  profileId       String             @map("profile_id") @db.Uuid
+  type            BoostRequestType
+  status          BoostRequestStatus @default(pending)
+  note            String?            @db.VarChar(500)
+  rejectionReason String?            @map("rejection_reason") @db.VarChar(500)
+  reviewedBy      String?            @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?          @map("reviewed_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([profileId, type, createdAt])
+  @@map("boost_requests")
   @@schema("platform")
 }

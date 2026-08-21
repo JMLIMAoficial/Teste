@@ -3,7 +3,7 @@ import { InstitutionalLayout } from "@/components/institutional-layout";
 
 export const metadata: Metadata = {
   title: "Termos de uso",
-  description: "Termos de uso da plataforma Acompanhante.",
+  description: "Termos de uso do Clube dos Garotos.",
 };
 
 export default function TermosPage() {

@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanionCard } from "@/components/companion-card";
+import { JsonLd } from "@/components/json-ld";
 import { PublicPageLayout } from "@/components/public-header";
-import { fetchCity, fetchSeoMeta } from "@/lib/api";
+import { fetchCity, fetchSeoMeta, fetchSeoSchema } from "@/lib/api";
 
 export async function generateMetadata({
   params,
@@ -17,8 +18,10 @@ export async function generateMetadata({
     name: cityData?.city,
   });
   return {
-    title: meta?.title ?? `Acompanhantes em ${cityData?.city ?? slug}`,
-    description: meta?.description,
+    title: meta?.title ?? `Garotos de programa em ${cityData?.city ?? slug}`,
+    description:
+      meta?.description ??
+      `Encontre garoto de programa em ${cityData?.city ?? slug} no Clube dos Garotos.`,
     alternates: meta?.canonical ? { canonical: meta.canonical } : undefined,
   };
 }
@@ -35,17 +38,24 @@ export default async function CidadePage({
     notFound();
   }
 
+  const schema = await fetchSeoSchema("city", {
+    slug,
+    name: data.city,
+    city: data.city,
+  });
+
   return (
     <PublicPageLayout mainClassName="mx-auto flex-1 max-w-7xl px-4 py-10 sm:px-6">
+        <JsonLd data={schema} />
         <Link href="/" className="text-sm text-text-muted hover:text-text-primary">
           ← Voltar
         </Link>
         <h1 className="mt-4 text-3xl font-bold text-text-primary">
-          Acompanhantes em {data.city}
+          Garotos de programa em {data.city}
         </h1>
         <p className="mt-2 text-text-secondary">
-          {data.total} perfil{data.total !== 1 ? "s" : ""} encontrado
-          {data.total !== 1 ? "s" : ""}
+          Anúncios de garoto de programa em {data.city}. {data.total} perfil
+          {data.total !== 1 ? "s" : ""} disponível{data.total !== 1 ? "is" : ""}.
         </p>
 
         {data.profiles.length === 0 ? (

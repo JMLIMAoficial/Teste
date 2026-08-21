@@ -227,18 +227,22 @@ export function MomentsFeed({
   if (moments.length === 0 || !moment) return null;
 
   const shellClass = isPage
-    ? "mx-auto flex min-h-[calc(100dvh-12rem)] w-full max-w-lg flex-col"
+    ? "mx-auto flex min-h-[calc(100dvh-12rem)] w-full max-w-lg flex-col md:max-w-none"
     : "mx-auto flex w-full max-w-lg flex-col";
 
-  const mediaHeight = isPage ? "min-h-[calc(100dvh-12rem)]" : "aspect-[9/16] max-h-[70vh]";
+  const mediaHeight = isPage ? "min-h-[calc(100dvh-12rem)] md:min-h-0 md:h-[min(70vh,640px)]" : "aspect-[9/16] max-h-[70vh]";
   const visibleComments = showAllComments
     ? comments
     : comments.slice(0, INITIAL_COMMENTS_VISIBLE);
   const hiddenCommentsCount = Math.max(0, comments.length - INITIAL_COMMENTS_VISIBLE);
+  const canGoPrev = index > 0;
+  const canGoNext = index < moments.length - 1;
+  const navBtnClass =
+    "hidden h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-bg-secondary text-2xl text-text-primary transition hover:border-purple-deep/50 hover:bg-bg-tertiary hover:text-purple-light disabled:cursor-not-allowed disabled:opacity-30 md:flex";
 
   return (
     <div className={`${shellClass} ${className}`}>
-      <div className="mb-3 flex items-center justify-between px-1 text-xs text-text-muted">
+      <div className="mb-3 flex items-center justify-between px-1 text-xs text-text-muted md:mx-auto md:w-full md:max-w-lg">
         <span>
           {index + 1} / {moments.length}
         </span>
@@ -249,179 +253,210 @@ export function MomentsFeed({
         )}
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-border-subtle bg-black">
-        <div
-          className={`relative ${mediaHeight} w-full touch-pan-y select-none overflow-hidden bg-black`}
-          onClick={handleTap}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div
-            ref={trackRef}
-            className="flex h-full w-full transition-transform duration-200 ease-out"
+      <div className="relative md:flex md:items-center md:justify-center md:gap-4">
+        {moments.length > 1 && (
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={!canGoPrev}
+            className={navBtnClass}
+            aria-label="Momento anterior"
           >
-          {moment && isVideo ? (
-            <video
-              key={moment.id}
-              src={moment.url}
-              className="h-full w-full shrink-0 object-contain"
-              controls
-              playsInline
-              autoPlay
-              muted
-              loop={moments.length === 1}
-            />
-          ) : moment ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={moment.id}
-              src={moment.url}
-              alt=""
-              decoding="async"
-              className="h-full w-full shrink-0 object-contain"
-              draggable={false}
-            />
-          ) : null}
-          </div>
+            ‹
+          </button>
+        )}
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 to-transparent" />
-
-          <div className="absolute left-3 top-3 z-10">
-            <Link
-              href={`/perfil/${moment.profileSlug}`}
-              className="flex items-center gap-2 rounded-full bg-black/60 px-2 py-1 pr-3 md:bg-black/40 md:backdrop-blur-sm"
-              onClick={(e) => e.stopPropagation()}
+        <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border-subtle bg-black md:shrink-0">
+          <div
+            className={`relative ${mediaHeight} w-full touch-pan-y select-none overflow-hidden bg-black`}
+            onClick={handleTap}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div
+              ref={trackRef}
+              className="flex h-full w-full transition-transform duration-200 ease-out"
             >
-              <div className="h-8 w-8 overflow-hidden rounded-full border border-white/20">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={moment.url} alt="" decoding="async" loading="lazy" className="h-full w-full object-cover" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{moment.profileName}</p>
-                {moment.city && <p className="truncate text-[10px] text-white/70">{moment.city}</p>}
-              </div>
-            </Link>
-          </div>
+            {moment && isVideo ? (
+              <video
+                key={moment.id}
+                src={moment.url}
+                className="h-full w-full shrink-0 object-contain"
+                controls
+                playsInline
+                autoPlay
+                muted
+                loop={moments.length === 1}
+              />
+            ) : moment ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={moment.id}
+                src={moment.url}
+                alt=""
+                decoding="async"
+                className="h-full w-full shrink-0 object-contain"
+                draggable={false}
+              />
+            ) : null}
+            </div>
 
-          <div className="absolute bottom-3 left-3 right-16 z-10">
-            {moment.caption && (
-              <p className="line-clamp-3 text-sm leading-snug text-white">{moment.caption}</p>
-            )}
-            <p className="mt-1 text-[10px] text-white/50">{moment.viewCount} visualizações</p>
-          </div>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 to-transparent" />
 
-          <div className="absolute bottom-3 right-3 z-10 flex flex-col items-center gap-3">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleLike();
-              }}
-              className={`flex flex-col items-center gap-0.5 rounded-2xl px-2 py-2 transition ${
-                liked ? "scale-110" : "hover:bg-white/10"
-              }`}
-              aria-label="Curtir"
-            >
-              <span
-                className={`text-2xl ${liked ? "animate-pulse drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]" : ""}`}
+            <div className="absolute left-3 top-3 z-10">
+              <Link
+                href={`/perfil/${moment.profileSlug}`}
+                className="flex items-center gap-2 rounded-full bg-black/60 px-2 py-1 pr-3 md:bg-black/40 md:backdrop-blur-sm"
+                onClick={(e) => e.stopPropagation()}
               >
-                🔥
-              </span>
-              <span className="text-[11px] font-semibold text-white">{likes}</span>
-            </button>
+                <div className="h-8 w-8 overflow-hidden rounded-full border border-white/20">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={moment.url} alt="" decoding="async" loading="lazy" className="h-full w-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{moment.profileName}</p>
+                  {moment.city && <p className="truncate text-[10px] text-white/70">{moment.city}</p>}
+                </div>
+              </Link>
+            </div>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowAllComments(true);
-              }}
-              className="flex flex-col items-center gap-0.5 rounded-2xl px-2 py-2 hover:bg-white/10"
-              aria-label="Comentários"
-            >
-              <span className="text-2xl">💬</span>
-              <span className="text-[11px] font-semibold text-white">{comments.length}</span>
-            </button>
+            <div className="absolute bottom-3 left-3 right-16 z-10">
+              {moment.caption && (
+                <p className="line-clamp-3 text-sm leading-snug text-white">{moment.caption}</p>
+              )}
+              <p className="mt-1 text-[10px] text-white/50">{moment.viewCount} visualizações</p>
+            </div>
+
+            <div className="absolute bottom-3 right-3 z-10 flex flex-col items-center gap-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLike();
+                }}
+                className={`flex flex-col items-center gap-0.5 rounded-2xl px-2 py-2 transition ${
+                  liked ? "scale-110" : "hover:bg-white/10"
+                }`}
+                aria-label="Curtir"
+              >
+                <span
+                  className={`text-2xl ${liked ? "animate-pulse drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]" : ""}`}
+                >
+                  🔥
+                </span>
+                <span className="text-[11px] font-semibold text-white">{likes}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAllComments(true);
+                }}
+                className="flex flex-col items-center gap-0.5 rounded-2xl px-2 py-2 hover:bg-white/10"
+                aria-label="Comentários"
+              >
+                <span className="text-2xl">💬</span>
+                <span className="text-[11px] font-semibold text-white">{comments.length}</span>
+              </button>
+            </div>
           </div>
+
+          <section className="border-t border-border-subtle bg-bg-secondary p-4">
+            <h3 className="text-sm font-semibold text-text-primary">
+              Comentários {comments.length > 0 && `(${comments.length})`}
+            </h3>
+
+            {loadingComments ? (
+              <p className="mt-3 text-sm text-text-muted">Carregando comentários...</p>
+            ) : comments.length === 0 ? (
+              <p className="mt-3 text-sm text-text-muted">Nenhum comentário ainda. Seja o primeiro!</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {visibleComments.map((c) => (
+                  <div key={c.id} className="rounded-xl bg-bg-tertiary px-3 py-2.5">
+                    <p className="text-sm font-medium text-text-primary">{c.authorName}</p>
+                    <p className="mt-0.5 text-sm leading-snug text-text-secondary">{c.content}</p>
+                  </div>
+                ))}
+
+                {!showAllComments && hiddenCommentsCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllComments(true)}
+                    className="w-full rounded-xl border border-border-subtle py-2 text-sm font-medium text-purple-light transition hover:border-purple-deep/40 hover:text-gold"
+                  >
+                    Ver mais ({hiddenCommentsCount})
+                  </button>
+                )}
+
+                {showAllComments && hiddenCommentsCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllComments(false)}
+                    className="w-full py-1 text-sm text-text-muted hover:text-text-secondary"
+                  >
+                    Ver menos
+                  </button>
+                )}
+              </div>
+            )}
+
+            {commentMessage && (
+              <p className="mt-3 rounded-lg bg-purple-deep/20 px-3 py-2 text-xs text-purple-light">
+                {commentMessage}
+              </p>
+            )}
+
+            <form onSubmit={submitComment} className="mt-4 space-y-2 border-t border-border-subtle pt-4">
+              <input
+                type="text"
+                placeholder="Seu nome (opcional)"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                className="w-full rounded-xl border border-border-subtle bg-bg-tertiary px-3 py-2 text-sm text-text-primary"
+              />
+              <textarea
+                placeholder="Escreva um comentário..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                required
+                rows={2}
+                className="w-full rounded-xl border border-border-subtle bg-bg-tertiary px-3 py-2 text-sm text-text-primary"
+              />
+              <button
+                type="submit"
+                className="w-full rounded-xl bg-purple-deep py-2 text-sm font-medium text-white hover:bg-purple-light"
+              >
+                Comentar
+              </button>
+            </form>
+          </section>
         </div>
 
-        <section className="border-t border-border-subtle bg-bg-secondary p-4">
-          <h3 className="text-sm font-semibold text-text-primary">
-            Comentários {comments.length > 0 && `(${comments.length})`}
-          </h3>
-
-          {loadingComments ? (
-            <p className="mt-3 text-sm text-text-muted">Carregando comentários...</p>
-          ) : comments.length === 0 ? (
-            <p className="mt-3 text-sm text-text-muted">Nenhum comentário ainda. Seja o primeiro!</p>
-          ) : (
-            <div className="mt-3 space-y-2">
-              {visibleComments.map((c) => (
-                <div key={c.id} className="rounded-xl bg-bg-tertiary px-3 py-2.5">
-                  <p className="text-sm font-medium text-text-primary">{c.authorName}</p>
-                  <p className="mt-0.5 text-sm leading-snug text-text-secondary">{c.content}</p>
-                </div>
-              ))}
-
-              {!showAllComments && hiddenCommentsCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllComments(true)}
-                  className="w-full rounded-xl border border-border-subtle py-2 text-sm font-medium text-purple-light transition hover:border-purple-deep/40 hover:text-gold"
-                >
-                  Ver mais ({hiddenCommentsCount})
-                </button>
-              )}
-
-              {showAllComments && hiddenCommentsCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllComments(false)}
-                  className="w-full py-1 text-sm text-text-muted hover:text-text-secondary"
-                >
-                  Ver menos
-                </button>
-              )}
-            </div>
-          )}
-
-          {commentMessage && (
-            <p className="mt-3 rounded-lg bg-purple-deep/20 px-3 py-2 text-xs text-purple-light">
-              {commentMessage}
-            </p>
-          )}
-
-          <form onSubmit={submitComment} className="mt-4 space-y-2 border-t border-border-subtle pt-4">
-            <input
-              type="text"
-              placeholder="Seu nome (opcional)"
-              value={authorName}
-              onChange={(e) => setAuthorName(e.target.value)}
-              className="w-full rounded-xl border border-border-subtle bg-bg-tertiary px-3 py-2 text-sm text-text-primary"
-            />
-            <textarea
-              placeholder="Escreva um comentário..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              required
-              rows={2}
-              className="w-full rounded-xl border border-border-subtle bg-bg-tertiary px-3 py-2 text-sm text-text-primary"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-purple-deep py-2 text-sm font-medium text-white hover:bg-purple-light"
-            >
-              Comentar
-            </button>
-          </form>
-        </section>
+        {moments.length > 1 && (
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!canGoNext}
+            className={navBtnClass}
+            aria-label="Próximo momento"
+          >
+            ›
+          </button>
+        )}
       </div>
 
-      <p className="mt-3 text-center text-xs text-text-muted">
+      <p className="mt-3 text-center text-xs text-text-muted md:hidden">
         Arraste a foto com o dedo ← → para passar
       </p>
+      {moments.length > 1 && (
+        <p className="mt-3 hidden text-center text-xs text-text-muted md:block">
+          Use as setas ← → ou o teclado para ver mais momentos
+        </p>
+      )}
     </div>
   );
 }

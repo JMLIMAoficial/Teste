@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertMinimumAge } from '../common/age.util';
+import { resolveJwtSecret } from '../common/jwt-secret';
 import { assertRateLimit } from '../common/rate-limit.util';
 import { mergeRolePermissions } from '../common/permissions';
 import { generateRefreshToken, hashToken, uniqueSlug } from '../common/utils';
@@ -264,7 +265,7 @@ export class AuthService {
     const payload: JwtPayload = { sub: userId, email, roles, permissions };
 
     const accessToken = await this.jwt.signAsync(payload, {
-      secret: this.config.get('JWT_SECRET', 'dev-secret'),
+      secret: resolveJwtSecret(this.config),
       expiresIn: this.config.get('JWT_ACCESS_EXPIRES', '15m'),
     });
 

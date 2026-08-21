@@ -20,6 +20,9 @@ export const DomainEvents = {
   VerificationApproved: 'verification.approved',
   VerificationRejected: 'verification.rejected',
   ReportSubmitted: 'report.submitted',
+  PremiumRequested: 'premium.requested',
+  FeaturedRequested: 'featured.requested',
+  BoostRequestRejected: 'boost.rejected',
 } as const;
 
 export type ProfileApprovedPayload = {
@@ -99,6 +102,16 @@ export type VerificationRequestPayload = {
   userId: string;
   displayName: string;
   slug: string;
+  rejectionReason?: string;
+};
+
+export type BoostRequestPayload = {
+  requestId: string;
+  profileId: string;
+  userId: string;
+  displayName: string;
+  slug: string;
+  type: 'premium' | 'featured';
   rejectionReason?: string;
 };
 

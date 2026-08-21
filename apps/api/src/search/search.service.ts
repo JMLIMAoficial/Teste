@@ -71,7 +71,9 @@ export class SearchService implements OnModuleInit {
         'createdAt',
       ]);
       this.logger.log('Meilisearch connected');
-      await this.reindexAll();
+      if (process.env.SEARCH_REINDEX_ON_BOOT === 'true') {
+        await this.reindexAll();
+      }
     } catch (err) {
       this.logger.warn(`Meilisearch unavailable: ${err}`);
       this.client = null;

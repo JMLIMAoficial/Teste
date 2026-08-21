@@ -25,7 +25,7 @@ type NominatimResult = {
 @Injectable()
 export class GeocodingService {
   private readonly logger = new Logger(GeocodingService.name);
-  private readonly nominatimUserAgent = 'Acompanhante/1.0';
+  private readonly nominatimUserAgent = 'ClubeDosGarotos/1.0';
 
   async geocodeCep(cep: string): Promise<GeocodedAddress | null> {
     const digits = normalizeCep(cep);

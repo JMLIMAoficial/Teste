@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/admin/moderacao", label: "Moderação" },
   { href: "/admin/denuncias", label: "Denúncias" },
   { href: "/admin/verificacoes", label: "Verificações" },
+  { href: "/admin/premium", label: "Premium & Destaque" },
   { href: "/admin/mensagens", label: "Mensagens" },
   { href: "/admin/configuracoes", label: "Configurações" },
   { href: "/admin/auditoria", label: "Auditoria" },

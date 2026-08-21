@@ -1,14 +1,28 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { MomentsFeed } from "@/components/moments-stories";
 import { PublicPageLayout } from "@/components/public-header";
-import { fetchMomentsFeed } from "@/lib/api";
+import { fetchMomentsFeed, fetchSeoMeta } from "@/lib/api";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const meta = await fetchSeoMeta("moments");
+  return {
+    title: meta?.title ?? "Momentos de garotos de programa",
+    description:
+      meta?.description ??
+      "Veja momentos e stories publicados por garotos de programa no Clube dos Garotos.",
+    alternates: meta?.canonical ? { canonical: meta.canonical } : undefined,
+  };
+}
 
 export default async function MomentosPage() {
   const { moments, total, source } = await fetchMomentsFeed(40);
 
   return (
     <PublicPageLayout mainClassName="mx-auto flex-1 max-w-7xl px-4 py-6 sm:px-6">
-        <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">Momentos</h1>
+        <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">
+          Momentos de garotos de programa
+        </h1>
         <p className="mt-1 text-sm text-text-muted">
           {total} momento{total !== 1 ? "s" : ""} · {source === "api" ? "Ao vivo" : "Sem momentos"}
         </p>
@@ -17,7 +31,7 @@ export default async function MomentosPage() {
           <div className="mt-8 rounded-2xl border border-border-subtle bg-bg-secondary p-8 text-center">
             <p className="text-text-secondary">Nenhum momento publicado ainda.</p>
             <Link href="/" className="mt-4 inline-block text-sm text-purple-light">
-              Voltar ao início
+              Voltar aos garotos
             </Link>
           </div>
         ) : (

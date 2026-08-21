@@ -24,7 +24,13 @@ type DashboardProfile = {
   viewCount?: number;
   city?: string;
   state?: string;
-  photos: Array<{ id: string; url: string; thumbUrl?: string; isCover: boolean }>;
+  photos: Array<{
+    id: string;
+    url: string;
+    thumbUrl?: string;
+    isCover: boolean;
+    isProfile?: boolean;
+  }>;
   tags?: Array<{ id: string; name: string }>;
   completion?: ProfileCompletion;
 };
@@ -39,7 +45,6 @@ const SECTION_BY_KEY: Record<string, string> = {
   location: "localizacao",
   cep: "localizacao",
   photo: "fotos-principais",
-  cover: "fotos-principais",
   whatsapp: "whatsapp",
 };
 
@@ -157,9 +162,9 @@ export default function PainelDashboardPage() {
 
   const completion = getProfileCompletion(profile);
   const insight = publicationInsight(profile, completion);
-  const coverPhoto =
-    profile.photos.find((p) => p.isCover)?.thumbUrl ??
-    profile.photos.find((p) => p.isCover)?.url ??
+  const profilePhoto =
+    profile.photos.find((p) => p.isProfile || p.isCover)?.thumbUrl ??
+    profile.photos.find((p) => p.isProfile || p.isCover)?.url ??
     profile.photos[0]?.thumbUrl ??
     profile.photos[0]?.url;
   const locationLabel = [profile.city, profile.state].filter(Boolean).join(", ");
@@ -186,7 +191,7 @@ export default function PainelDashboardPage() {
               </p>
               <h2 className="mt-1 text-lg font-semibold text-text-primary">Próximos passos</h2>
               <p className="mt-1 text-sm text-text-secondary">
-                Complete estes itens para fortalecer seu perfil e aumentar as chances de publicação.
+                Complete seu perfil para fortalecer seus resultados nas buscas e recomendações.
               </p>
             </div>
             <span className="rounded-full bg-bg-primary/60 px-3 py-1 text-sm font-semibold text-gold">
@@ -232,9 +237,9 @@ export default function PainelDashboardPage() {
       >
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <div className="mx-auto aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl border border-border-subtle sm:mx-0 sm:w-32">
-            {coverPhoto ? (
+            {profilePhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={coverPhoto} alt="" className="h-full w-full object-cover" />
+              <img src={profilePhoto} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-bg-tertiary text-3xl text-text-muted">
                 ?
@@ -397,8 +402,18 @@ export default function PainelDashboardPage() {
             },
             {
               href: "/painel/perfil#fotos-principais",
-              title: "Fotos do perfil",
-              desc: "Foto de perfil, capa e álbum",
+              title: "Foto principal",
+              desc: "Cards, busca e página do perfil",
+            },
+            {
+              href: "/painel/fotos",
+              title: "Álbum de fotos",
+              desc: "Galeria pública do perfil",
+            },
+            {
+              href: "/painel/videos",
+              title: "Vídeos",
+              desc: "Upload e status de moderação",
             },
             {
               href: "/painel/mensagens",

@@ -268,10 +268,8 @@ export class CompanionService {
       .filter(Boolean);
 
     const hs = await this.prisma.hotScore.findUnique({ where: { profileId: profile.id } });
-    const coverPath = this.coverPhoto.pickBannerStoragePath(profile.photos);
-    const coverUrls = coverPath ? await this.storage.resolvePhotoUrls(coverPath) : null;
-    const profilePath = this.coverPhoto.pickCoverStoragePath(profile.photos);
-    const profileUrls = profilePath ? await this.storage.resolvePhotoUrls(profilePath) : null;
+    const mainPath = this.coverPhoto.pickMainStoragePath(profile.photos);
+    const mainUrls = mainPath ? await this.storage.resolvePhotoUrls(mainPath) : null;
     const card = toPublicCard({
       slug: profile.slug,
       displayName: profile.displayName,
@@ -288,23 +286,24 @@ export class CompanionService {
       tags,
       location: profile.location,
       penisSizeCm: profile.penisSizeCm,
-      coverPhotoUrl: profileUrls?.coverPhotoUrl ?? coverUrls?.coverPhotoUrl ?? null,
-      coverPhotoThumbUrl:
-        profileUrls?.coverPhotoThumbUrl ?? coverUrls?.coverPhotoThumbUrl ?? null,
+      coverPhotoUrl: mainUrls?.coverPhotoUrl ?? null,
+      coverPhotoThumbUrl: mainUrls?.coverPhotoThumbUrl ?? null,
       isVerified: profile.isVerified,
     });
 
     const photos = await Promise.all(
-      profile.photos.map(async (p) => {
-        const urls = await this.storage.resolvePhotoUrls(p.mediaAsset.storagePath);
-        return {
-          id: p.id,
-          url: urls.coverPhotoUrl,
-          thumbUrl: urls.coverPhotoThumbUrl,
-          isCover: p.isCover,
-          isProfile: p.isProfile,
-        };
-      }),
+      profile.photos
+        .filter((p) => !p.isCover && !p.isProfile)
+        .map(async (p) => {
+          const urls = await this.storage.resolvePhotoUrls(p.mediaAsset.storagePath);
+          return {
+            id: p.id,
+            url: urls.coverPhotoUrl,
+            thumbUrl: urls.coverPhotoThumbUrl,
+            isCover: p.isCover,
+            isProfile: p.isProfile,
+          };
+        }),
     );
 
     return {
@@ -316,8 +315,8 @@ export class CompanionService {
       memberSince: formatMemberSince(profile.createdAt),
       ...buildProfileLocationFields(profile.location),
       photos,
-      coverPhotoUrl: coverUrls?.coverPhotoUrl ?? profileUrls?.coverPhotoUrl ?? null,
-      coverPhotoThumbUrl: coverUrls?.coverPhotoThumbUrl ?? profileUrls?.coverPhotoThumbUrl ?? null,
+      coverPhotoUrl: mainUrls?.coverPhotoUrl ?? null,
+      coverPhotoThumbUrl: mainUrls?.coverPhotoThumbUrl ?? null,
       socialLinks: parseSocialLinks(profile.socialLinks),
       ...this.contact.buildPublicContact(profile.whatsapp, profile.displayName),
     };
@@ -471,12 +470,7 @@ export class CompanionService {
       }))
       .filter((t) => t.name);
 
-    const hasProfilePhoto =
-      profile.photos.some((p) => p.isProfile) ||
-      (profile.photos.length > 0 && !profile.photos.some((p) => p.isProfile));
-    const hasCoverPhoto =
-      profile.photos.some((p) => p.isCover) ||
-      (profile.photos.length > 0 && !profile.photos.some((p) => p.isCover));
+    const hasMainPhoto = profile.photos.some((p) => p.isProfile || p.isCover) || profile.photos.length > 0;
 
     const checks = [
       { key: 'birthDate', label: 'Data de nascimento', done: !!profile.birthDate },
@@ -486,8 +480,7 @@ export class CompanionService {
       { key: 'penisSizeCm', label: 'Dote (cm)', done: profile.penisSizeCm != null },
       { key: 'location', label: 'Cidade e estado', done: !!(profile.location?.city && profile.location?.state) },
       { key: 'cep', label: 'CEP (proximidade)', done: !!(profile.location?.latitude && profile.location?.longitude) },
-      { key: 'photo', label: 'Foto de perfil', done: hasProfilePhoto },
-      { key: 'cover', label: 'Foto de capa', done: hasCoverPhoto },
+      { key: 'photo', label: 'Foto principal', done: hasMainPhoto },
       { key: 'tags', label: 'Tags do perfil', done: tags.length > 0 },
       { key: 'whatsapp', label: 'WhatsApp', done: !!phone },
     ];
@@ -537,7 +530,7 @@ export class CompanionService {
       ),
       completion: {
         percent: Math.round((doneCount / checks.length) * 100),
-        readyForReview: doneCount === checks.length && hasProfilePhoto,
+        readyForReview: doneCount === checks.length && hasMainPhoto,
         missing: checks.filter((c) => !c.done).map((c) => c.label),
         checks,
       },

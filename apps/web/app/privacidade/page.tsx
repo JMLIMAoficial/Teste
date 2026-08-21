@@ -4,7 +4,7 @@ import { InstitutionalLayout } from "@/components/institutional-layout";
 
 export const metadata: Metadata = {
   title: "Política de privacidade",
-  description: "Como tratamos seus dados na plataforma Acompanhante.",
+  description: "Como tratamos seus dados no Clube dos Garotos.",
 };
 
 export default function PrivacidadePage() {

@@ -5,7 +5,12 @@ import { SearchService } from '../search/search.service';
 import { ImageVariantsService, mediumStoragePath, thumbStoragePath } from '../storage/image-variants.service';
 import { StorageService } from '../storage/storage.service';
 
-export type PhotoRole = 'profile' | 'cover' | 'album';
+/** profile/cover/main = mesma foto principal; album = galeria. */
+export type PhotoRole = 'profile' | 'cover' | 'main' | 'album';
+
+function isMainRole(role: PhotoRole) {
+  return role === 'profile' || role === 'cover' || role === 'main';
+}
 
 @Injectable()
 export class PhotosService {
@@ -62,20 +67,13 @@ export class PhotosService {
       },
     });
 
-    const asProfile = role === 'profile';
-    const asCover = role === 'cover';
+    const asMain = isMainRole(role);
 
     const photo = await this.prisma.$transaction(async (tx) => {
-      if (asProfile) {
+      if (asMain) {
         await tx.photo.updateMany({
           where: { profileId: profile.id },
-          data: { isProfile: false },
-        });
-      }
-      if (asCover) {
-        await tx.photo.updateMany({
-          where: { profileId: profile.id },
-          data: { isCover: false },
+          data: { isProfile: false, isCover: false },
         });
       }
 
@@ -83,10 +81,10 @@ export class PhotosService {
         data: {
           profileId: profile.id,
           mediaAssetId: asset.id,
-          status: 'approved',
-          sortOrder: photoCount,
-          isProfile: asProfile,
-          isCover: asCover,
+          status: 'pending',
+          sortOrder: asMain ? 0 : photoCount,
+          isProfile: asMain,
+          isCover: asMain,
         },
         include: { mediaAsset: true },
       });
@@ -104,40 +102,31 @@ export class PhotosService {
     };
   }
 
-  async setCover(userId: string, photoId: string) {
+  /** Define a foto principal (perfil + capa na mesma imagem). */
+  async setMain(userId: string, photoId: string) {
     const photo = await this.getOwnedPhoto(userId, photoId);
 
     await this.prisma.$transaction([
       this.prisma.photo.updateMany({
         where: { profileId: photo.profileId },
-        data: { isCover: false },
+        data: { isProfile: false, isCover: false },
       }),
       this.prisma.photo.update({
         where: { id: photoId },
-        data: { isCover: true, isProfile: false },
+        data: { isProfile: true, isCover: true },
       }),
     ]);
 
     await this.reindexIfPublic(photo.profileId);
-    return { id: photoId, isCover: true, isProfile: false };
+    return { id: photoId, isProfile: true, isCover: true };
+  }
+
+  async setCover(userId: string, photoId: string) {
+    return this.setMain(userId, photoId);
   }
 
   async setProfile(userId: string, photoId: string) {
-    const photo = await this.getOwnedPhoto(userId, photoId);
-
-    await this.prisma.$transaction([
-      this.prisma.photo.updateMany({
-        where: { profileId: photo.profileId },
-        data: { isProfile: false },
-      }),
-      this.prisma.photo.update({
-        where: { id: photoId },
-        data: { isProfile: true, isCover: false },
-      }),
-    ]);
-
-    await this.reindexIfPublic(photo.profileId);
-    return { id: photoId, isProfile: true, isCover: false };
+    return this.setMain(userId, photoId);
   }
 
   async reorderPhotos(userId: string, photoIds: string[]) {
@@ -187,23 +176,36 @@ export class PhotosService {
     }
 
     const updates: Array<ReturnType<typeof this.prisma.photo.update>> = [];
+    const hasMain = remaining.some((p) => p.isProfile || p.isCover);
 
-    if (!remaining.some((p) => p.isProfile)) {
+    if (!hasMain) {
       updates.push(
         this.prisma.photo.update({
           where: { id: remaining[0].id },
-          data: { isProfile: true },
+          data: { isProfile: true, isCover: true },
         }),
       );
-    }
-
-    if (!remaining.some((p) => p.isCover)) {
-      updates.push(
-        this.prisma.photo.update({
-          where: { id: remaining[0].id },
-          data: { isCover: true },
-        }),
-      );
+    } else {
+      // Garante que a principal tenha os dois flags
+      const main = remaining.find((p) => p.isProfile || p.isCover)!;
+      if (!main.isProfile || !main.isCover) {
+        updates.push(
+          this.prisma.photo.update({
+            where: { id: main.id },
+            data: { isProfile: true, isCover: true },
+          }),
+        );
+      }
+      for (const p of remaining) {
+        if (p.id !== main.id && (p.isProfile || p.isCover)) {
+          updates.push(
+            this.prisma.photo.update({
+              where: { id: p.id },
+              data: { isProfile: false, isCover: false },
+            }),
+          );
+        }
+      }
     }
 
     remaining.forEach((p, index) => {

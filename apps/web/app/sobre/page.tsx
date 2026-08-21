@@ -3,21 +3,23 @@ import { InstitutionalLayout } from "@/components/institutional-layout";
 
 export const metadata: Metadata = {
   title: "Sobre",
-  description: "Conheça a plataforma Acompanhante.",
+  description:
+    "Sobre o Clube dos Garotos: plataforma para encontrar garoto de programa com perfis, fotos e momentos.",
 };
 
 export default function SobrePage() {
   return (
-    <InstitutionalLayout title="Sobre a plataforma">
+    <InstitutionalLayout title="Sobre o Clube dos Garotos">
       <p>
-        A Acompanhante é uma plataforma de descoberta e gestão de perfis, pensada para oferecer
-        uma experiência premium, segura e transparente para visitantes e profissionais.
+        O Clube dos Garotos é uma plataforma para encontrar garoto de programa com perfil completo:
+        fotos, momentos, valores e contato. Nosso foco é uma experiência clara, segura e fácil de
+        navegar para visitantes e anunciantes.
       </p>
       <h2>O que oferecemos</h2>
       <ul>
-        <li>Perfis públicos com fotos, momentos, avaliações e selo de verificação</li>
-        <li>Busca por cidade, tags e rankings de popularidade</li>
-        <li>Painel completo para acompanhantes gerirem perfil, valores, horários e métricas</li>
+        <li>Anúncios de garotos de programa com fotos, momentos e avaliações</li>
+        <li>Busca por cidade, bairro, posição e categorias</li>
+        <li>Painel completo para anunciantes gerirem perfil, valores, horários e métricas</li>
         <li>Moderação humana de perfis e conteúdo gerado por terceiros</li>
       </ul>
       <h2>Compromisso</h2>

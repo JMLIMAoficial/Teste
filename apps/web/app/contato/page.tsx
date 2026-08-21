@@ -4,13 +4,13 @@ import { InstitutionalLayout } from "@/components/institutional-layout";
 
 export const metadata: Metadata = {
   title: "Contato",
-  description: "Entre em contato com a plataforma Acompanhante.",
+  description: "Entre em contato com o Clube dos Garotos.",
 };
 
 export default function ContatoPage() {
   return (
     <InstitutionalLayout title="Contato">
-      <h2>Acompanhantes cadastradas</h2>
+      <h2>Anunciantes cadastrados</h2>
       <p>
         Use o painel em{" "}
         <Link href="/painel/mensagens" className="text-purple-light hover:underline">

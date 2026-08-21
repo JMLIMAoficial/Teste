@@ -444,10 +444,11 @@ export type SiteSettings = {
 };
 
 const defaultSettings: SiteSettings = {
-  siteName: 'Acompanhante',
-  heroTitlePrefix: 'Encontre acompanhantes',
-  heroTitleHighlight: 'exclusivas',
-  heroSubtitle: 'Descubra perfis premium com confiança, sofisticação e facilidade de navegação.',
+  siteName: 'Clube dos Garotos',
+  heroTitlePrefix: 'Encontre garotos de programa',
+  heroTitleHighlight: 'perto de você',
+  heroSubtitle:
+    'Perfis com fotos, momentos e contato. Encontre garoto de programa em cidades do Brasil.',
   maintenanceMode: false,
   registrationOpen: true,
   premiumHomeLimit: 6,

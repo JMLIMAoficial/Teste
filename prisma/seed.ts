@@ -94,6 +94,7 @@ async function ensureProfilePhotos(profileId: string, slug: string, seeds: strin
         status: 'approved',
         sortOrder: i,
         isCover: i === 0,
+        isProfile: i === 0,
       },
     });
   }
@@ -326,6 +327,11 @@ async function wipeAllProfiles(adminUserId?: string) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Refusing to run seed in production (NODE_ENV=production).');
+    process.exit(1);
+  }
+
   const shouldReset = process.argv.includes('--reset') || process.env.RESET_PROFILES === '1';
   console.log('Seeding database...');
 
@@ -813,20 +819,27 @@ async function main() {
   }
 
   const siteDefaults: Record<string, string> = {
-    site_name: 'Acompanhante',
-    hero_title_prefix: 'Encontre acompanhantes',
-    hero_title_highlight: 'exclusivas',
-    hero_subtitle: 'Descubra perfis premium com confiança, sofisticação e facilidade de navegação.',
+    site_name: 'Clube dos Garotos',
+    hero_title_prefix: 'Encontre garotos de programa',
+    hero_title_highlight: 'perto de você',
+    hero_subtitle:
+      'Perfis com fotos, momentos e contato. Encontre garoto de programa em cidades do Brasil.',
     maintenance_mode: 'false',
     registration_open: 'true',
     'public.home.premium.limit': '6',
     'hotscore.weights.premium_bonus': '12',
     'hotscore.weights.featured_bonus': '8',
   };
+  const brandingKeys = new Set([
+    'site_name',
+    'hero_title_prefix',
+    'hero_title_highlight',
+    'hero_subtitle',
+  ]);
   for (const [key, value] of Object.entries(siteDefaults)) {
     await prisma.siteSetting.upsert({
       where: { key },
-      update: {},
+      update: brandingKeys.has(key) ? { value } : {},
       create: { key, value },
     });
   }

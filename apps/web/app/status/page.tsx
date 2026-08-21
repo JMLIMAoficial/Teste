@@ -104,8 +104,7 @@ npm run db:seed
 npm run dev:api`}
             </pre>
             <p className="mt-3 text-sm text-text-muted">
-              Contas demo: <code className="text-purple-light">admin@demo.local</code> /{" "}
-              <code className="text-purple-light">Admin123!</code>
+              Depois do seed, use as contas demo listadas no terminal (somente em desenvolvimento).
             </p>
           </div>
         )}

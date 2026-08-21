@@ -11,8 +11,11 @@ export async function GET() {
       headers: { "Content-Type": "text/plain" },
     });
   } catch {
-    return new Response("User-agent: *\nAllow: /\n", {
-      headers: { "Content-Type": "text/plain" },
-    });
+    return new Response(
+      `User-agent: *\nAllow: /\nSitemap: ${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/sitemap.xml\n`,
+      {
+        headers: { "Content-Type": "text/plain" },
+      },
+    );
   }
 }

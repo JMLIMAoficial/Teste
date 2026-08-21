@@ -19,7 +19,7 @@ import { Roles } from '../common/auth.types';
 import type { AuthUser } from '../common/auth.types';
 
 function parsePhotoRole(value: unknown): PhotoRole {
-  if (value === 'profile' || value === 'cover' || value === 'album') return value;
+  if (value === 'profile' || value === 'cover' || value === 'main' || value === 'album') return value;
   return 'album';
 }
 

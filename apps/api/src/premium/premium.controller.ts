@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { IsISO8601, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { IsISO8601, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { AuthUser, Roles } from '../common/auth.types';
 import { CurrentUser, JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -18,6 +18,30 @@ class StatusActionDto {
   note?: string;
 }
 
+class BoostRequestDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
+}
+
+class RejectBoostDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
+}
+
+class ApproveBoostDto {
+  @IsOptional()
+  @IsISO8601()
+  expiresAt?: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
 @Controller('v1/admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -27,6 +51,29 @@ export class PremiumController {
   @Get('premium/profiles')
   search(@Query('q') q?: string) {
     return this.premium.searchProfiles(q);
+  }
+
+  @Get('boost-requests/pending')
+  listPending() {
+    return this.premium.listPendingRequests();
+  }
+
+  @Patch('boost-requests/:id/approve')
+  approve(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ApproveBoostDto,
+  ) {
+    return this.premium.approveRequest(id, user, dto.expiresAt, dto.note);
+  }
+
+  @Patch('boost-requests/:id/reject')
+  reject(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RejectBoostDto,
+  ) {
+    return this.premium.rejectRequest(id, user, dto.reason);
   }
 
   @Post('premium/activate')
@@ -59,5 +106,15 @@ export class CompanionStatusController {
   @Get('status')
   getStatus(@CurrentUser() user: AuthUser) {
     return this.premium.getCompanionStatus(user.id);
+  }
+
+  @Post('status/premium')
+  requestPremium(@CurrentUser() user: AuthUser, @Body() dto: BoostRequestDto) {
+    return this.premium.requestBoost(user.id, 'premium', dto.note);
+  }
+
+  @Post('status/featured')
+  requestFeatured(@CurrentUser() user: AuthUser, @Body() dto: BoostRequestDto) {
+    return this.premium.requestBoost(user.id, 'featured', dto.note);
   }
 }

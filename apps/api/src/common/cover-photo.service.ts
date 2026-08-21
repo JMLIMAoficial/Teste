@@ -9,6 +9,10 @@ type PhotoWithAsset = {
   mediaAsset: { storagePath: string };
 };
 
+function isMainPhoto(p: PhotoWithAsset) {
+  return !!(p.isProfile || p.isCover);
+}
+
 @Injectable()
 export class CoverPhotoService {
   constructor(
@@ -16,44 +20,46 @@ export class CoverPhotoService {
     private readonly storage: StorageService,
   ) {}
 
-  /** Foto usada nos cards / listagens (perfil). */
+  /** Foto única principal: cards e página pública usam a mesma. */
+  pickMainStoragePath(photos: PhotoWithAsset[]): string | undefined {
+    const main = photos.find((p) => isMainPhoto(p));
+    if (main) return main.mediaAsset.storagePath;
+
+    const ranked = photos.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+    return ranked[0]?.mediaAsset.storagePath;
+  }
+
+  /** @deprecated Use pickMainStoragePath — mantido para compatibilidade. */
   pickCoverStoragePath(photos: PhotoWithAsset[]): string | undefined {
-    const ranked = photos.slice().sort((a, b) => {
-      const aProfile = a.isProfile ? 1 : 0;
-      const bProfile = b.isProfile ? 1 : 0;
-      if (aProfile !== bProfile) return bProfile - aProfile;
-      if (a.isCover !== b.isCover) return a.isCover ? -1 : 1;
-      return a.sortOrder - b.sortOrder;
-    });
-    return ranked[0]?.mediaAsset.storagePath;
+    return this.pickMainStoragePath(photos);
   }
 
-  /** Foto usada no topo da página pública (capa). */
+  /** @deprecated Use pickMainStoragePath — mantido para compatibilidade. */
   pickBannerStoragePath(photos: PhotoWithAsset[]): string | undefined {
-    const ranked = photos.slice().sort((a, b) => {
-      if (a.isCover !== b.isCover) return a.isCover ? -1 : 1;
-      const aProfile = a.isProfile ? 1 : 0;
-      const bProfile = b.isProfile ? 1 : 0;
-      if (aProfile !== bProfile) return bProfile - aProfile;
-      return a.sortOrder - b.sortOrder;
-    });
-    return ranked[0]?.mediaAsset.storagePath;
+    return this.pickMainStoragePath(photos);
   }
 
+  /** Resolve a foto principal de cada perfil para cards/listagens. */
   async resolveCoverPhotoMap(profileIds: string[]): Promise<Map<string, PhotoUrls>> {
     if (profileIds.length === 0) return new Map<string, PhotoUrls>();
 
     const photos = await this.prisma.photo.findMany({
       where: { profileId: { in: profileIds }, status: 'approved' },
       include: { mediaAsset: true },
-      orderBy: [{ isProfile: 'desc' }, { isCover: 'desc' }, { sortOrder: 'asc' }],
+      orderBy: [{ sortOrder: 'asc' }],
     });
 
-    const profilePaths = new Map<string, string>();
+    const byProfile = new Map<string, typeof photos>();
     for (const photo of photos) {
-      if (!profilePaths.has(photo.profileId)) {
-        profilePaths.set(photo.profileId, photo.mediaAsset.storagePath);
-      }
+      const list = byProfile.get(photo.profileId) ?? [];
+      list.push(photo);
+      byProfile.set(photo.profileId, list);
+    }
+
+    const profilePaths = new Map<string, string>();
+    for (const [profileId, list] of byProfile) {
+      const path = this.pickMainStoragePath(list);
+      if (path) profilePaths.set(profileId, path);
     }
 
     const urlCache = new Map<string, PhotoUrls>();

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { CompanionCard } from "@/components/companion-card";
 import type { CompanionCardData } from "@/lib/mock-data";
 import { fetchNearbyProfiles } from "@/lib/api";
@@ -11,12 +10,11 @@ import {
   hasConsentDecision,
   hasGeoConsent,
 } from "@/lib/consent";
+import { PROFILE_POSITIONS } from "@/lib/profile-position";
 
 const POSITION_OPTIONS = [
   { value: "", label: "Todas" },
-  { value: "active", label: "Ativo" },
-  { value: "passive", label: "Passivo" },
-  { value: "versatile", label: "Versátil" },
+  ...PROFILE_POSITIONS,
 ] as const;
 
 type GeoState =
@@ -98,7 +96,7 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
     <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-text-primary sm:text-2xl">Perto de você</h1>
+          <h2 className="text-xl font-semibold text-text-primary sm:text-2xl">Perto de você</h2>
           <p className="mt-1 text-sm text-text-muted">
             {sortedByDistance && geo.status === "ready"
               ? `Ordenado por distância${
@@ -177,16 +175,11 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
       )}
 
       {filteredProfiles.length > 0 ? (
-        <>
-          <p className="mb-3 text-xs text-text-muted">
-            {filteredProfiles.length} perfil{filteredProfiles.length !== 1 ? "is" : ""}
-          </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredProfiles.map((profile) => (
-              <CompanionCard key={profile.slug} profile={profile} />
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {filteredProfiles.map((profile) => (
+            <CompanionCard key={profile.slug} profile={profile} />
+          ))}
+        </div>
       ) : !loadingProfiles ? (
         <div className="rounded-2xl border border-border-subtle bg-bg-secondary px-6 py-10 text-center">
           <p className="text-text-secondary">Nenhum perfil com esses filtros.</p>
@@ -202,16 +195,6 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
           </button>
         </div>
       ) : null}
-
-      <p className="mt-8 text-center text-xs text-text-muted">
-        <Link href="/busca" className="text-purple-light hover:text-gold">
-          Busca avançada
-        </Link>
-        {" · "}
-        <Link href="/cadastro" className="text-text-secondary hover:text-text-primary">
-          Anunciar
-        </Link>
-      </p>
     </section>
   );
 }

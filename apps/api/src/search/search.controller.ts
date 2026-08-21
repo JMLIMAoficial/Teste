@@ -1,4 +1,7 @@
-import { Controller, Get, Post, Query } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Roles } from '../common/auth.types';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { SearchService, type SearchSort } from './search.service';
 
 @Controller('v1/search')
@@ -27,6 +30,8 @@ export class SearchController {
   ) {
     const sortValue = (ordenar ?? sort) as SearchSort | undefined;
     const verifiedFilter = verificado === 'true' || verified === 'true';
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    const parsedOffset = offset ? parseInt(offset, 10) : undefined;
 
     return this.searchService.search(q ?? '', {
       city,
@@ -39,12 +44,20 @@ export class SearchController {
       neighborhood: bairro ?? neighborhood,
       tag,
       sort: sortValue,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
+      limit:
+        parsedLimit && Number.isFinite(parsedLimit)
+          ? Math.min(Math.max(parsedLimit, 1), 50)
+          : undefined,
+      offset:
+        parsedOffset && Number.isFinite(parsedOffset)
+          ? Math.max(parsedOffset, 0)
+          : undefined,
     });
   }
 
   @Post('reindex')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
   reindex() {
     return this.searchService.reindexAll();
   }

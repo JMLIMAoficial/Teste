@@ -1,4 +1,4 @@
-export type GalleryPhoto = { id: string; url: string; isCover: boolean };
+export type GalleryPhoto = { id: string; url: string; isCover: boolean; isProfile?: boolean };
 
 export function resolvePhotoIndex(photos: GalleryPhoto[], url?: string | null) {
   if (!url || photos.length === 0) return 0;

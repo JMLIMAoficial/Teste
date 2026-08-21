@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { HotScoreThermometer } from "@/components/hot-score-thermometer";
 import { useToast } from "@/components/toast";
 import { apiFetch } from "@/lib/auth";
+import { PROFILE_POSITIONS } from "@/lib/profile-position";
 
 type AdminProfile = {
   id: string;
@@ -35,18 +36,20 @@ type AdminProfile = {
   pendingVideos: number;
   pendingMoments: number;
   tagIds: string[];
-  photos: Array<{ id: string; url: string; thumbUrl?: string; isCover: boolean; status: string }>;
+  photos: Array<{
+    id: string;
+    url: string;
+    thumbUrl?: string;
+    isCover: boolean;
+    isProfile?: boolean;
+    status: string;
+  }>;
   completion: { percent: number; readyForReview: boolean; missing: string[] };
 };
 
 type TagOption = { id: string; name: string };
 
 const PREFERENCES = ["Heterossexual", "Homossexual", "Bissexual", "Pansexual"];
-const POSITIONS = [
-  { value: "active", label: "Ativo" },
-  { value: "passive", label: "Passivo" },
-  { value: "versatile", label: "Versátil" },
-];
 
 const inputClass =
   "w-full rounded-xl border border-border-subtle bg-bg-tertiary px-4 py-3 text-text-primary focus:border-purple-deep focus:outline-none";
@@ -444,7 +447,7 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
               className={`mt-1 ${inputClass}`}
             >
               <option value="">—</option>
-              {POSITIONS.map((p) => (
+              {PROFILE_POSITIONS.map((p) => (
                 <option key={p.value} value={p.value}>
                   {p.label}
                 </option>
@@ -529,7 +532,7 @@ export function AdminProfileDetail({ profileId }: { profileId: string }) {
                   className="aspect-[3/4] w-full object-cover"
                 />
                 <p className="p-2 text-center text-xs text-text-muted">
-                  {photo.isCover ? "Capa" : photo.status}
+                  {photo.isCover || photo.isProfile ? "Principal" : photo.status}
                 </p>
               </div>
             ))}

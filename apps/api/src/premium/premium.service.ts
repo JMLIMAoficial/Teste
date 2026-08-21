@@ -1,12 +1,14 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { BoostRequestType } from '@prisma/client';
 import { AuthUser } from '../common/auth.types';
 import { effectiveProfileStatus } from '../common/profile.mapper';
-import { DomainEvents } from '../events/domain-events';
+import { DomainEvents, type BoostRequestPayload } from '../events/domain-events';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { AuditService } from '../platform/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -64,6 +66,143 @@ export class PremiumService implements OnModuleInit {
     };
   }
 
+  async requestBoost(userId: string, type: BoostRequestType, note?: string) {
+    const profile = await this.prisma.profile.findUnique({ where: { userId } });
+    if (!profile) throw new NotFoundException('Perfil não encontrado');
+    if (profile.status !== 'approved') {
+      throw new BadRequestException('Perfil precisa estar aprovado para solicitar');
+    }
+
+    const effective = effectiveProfileStatus(profile);
+    if (type === 'premium' && effective.isPremium) {
+      throw new BadRequestException('Perfil já é Premium');
+    }
+    if (type === 'featured' && effective.isFeatured) {
+      throw new BadRequestException('Perfil já está em Destaque');
+    }
+
+    const pending = await this.prisma.boostRequest.findFirst({
+      where: { profileId: profile.id, type, status: 'pending' },
+    });
+    if (pending) {
+      throw new BadRequestException('Já existe uma solicitação pendente');
+    }
+
+    const request = await this.prisma.boostRequest.create({
+      data: {
+        profileId: profile.id,
+        type,
+        note: note?.trim().slice(0, 500) || null,
+      },
+    });
+
+    const payload: BoostRequestPayload = {
+      requestId: request.id,
+      profileId: profile.id,
+      userId,
+      displayName: profile.displayName,
+      slug: profile.slug,
+      type,
+    };
+    this.events.emit(
+      type === 'premium' ? DomainEvents.PremiumRequested : DomainEvents.FeaturedRequested,
+      payload,
+    );
+
+    return {
+      id: request.id,
+      type: request.type,
+      status: request.status,
+      message: 'Solicitação enviada para a administração',
+    };
+  }
+
+  async listPendingRequests() {
+    const requests = await this.prisma.boostRequest.findMany({
+      where: { status: 'pending' },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const profileIds = requests.map((r) => r.profileId);
+    const profiles = await this.prisma.profile.findMany({
+      where: { id: { in: profileIds } },
+      include: { location: true },
+    });
+    const profileMap = new Map(profiles.map((p) => [p.id, p]));
+
+    return {
+      data: requests.map((r) => {
+        const p = profileMap.get(r.profileId);
+        return {
+          id: r.id,
+          profileId: r.profileId,
+          type: r.type,
+          note: r.note,
+          createdAt: r.createdAt,
+          displayName: p?.displayName ?? '—',
+          slug: p?.slug ?? '',
+          city: p?.location?.city,
+          state: p?.location?.state,
+          isPremium: p?.isPremium ?? false,
+          isFeatured: p?.isFeatured ?? false,
+        };
+      }),
+      total: requests.length,
+    };
+  }
+
+  async approveRequest(requestId: string, actor: AuthUser, expiresAt?: string, note?: string) {
+    const request = await this.prisma.boostRequest.findUnique({ where: { id: requestId } });
+    if (!request) throw new NotFoundException('Solicitação não encontrada');
+    if (request.status !== 'pending') {
+      throw new BadRequestException('Solicitação já foi analisada');
+    }
+
+    return request.type === 'premium'
+      ? this.activatePremium(request.profileId, actor, expiresAt, note)
+      : this.activateFeatured(request.profileId, actor, expiresAt, note);
+  }
+
+  async rejectRequest(requestId: string, actor: AuthUser, reason?: string) {
+    const request = await this.prisma.boostRequest.findUnique({ where: { id: requestId } });
+    if (!request) throw new NotFoundException('Solicitação não encontrada');
+    if (request.status !== 'pending') {
+      throw new BadRequestException('Solicitação já foi analisada');
+    }
+
+    const profile = await this.requireProfile(request.profileId);
+    const updated = await this.prisma.boostRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'rejected',
+        rejectionReason: reason?.trim().slice(0, 500) || null,
+        reviewedBy: actor.id,
+        reviewedAt: new Date(),
+      },
+    });
+
+    await this.audit.log({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      action: `${request.type}.request_rejected`,
+      entityType: 'boost_request',
+      entityId: request.id,
+      metadata: { reason, profileId: request.profileId },
+    });
+
+    this.events.emit(DomainEvents.BoostRequestRejected, {
+      requestId: request.id,
+      profileId: profile.id,
+      userId: profile.userId,
+      displayName: profile.displayName,
+      slug: profile.slug,
+      type: request.type,
+      rejectionReason: updated.rejectionReason ?? undefined,
+    } satisfies BoostRequestPayload);
+
+    return { id: updated.id, status: updated.status };
+  }
+
   async activatePremium(
     profileId: string,
     actor: AuthUser,
@@ -80,6 +219,8 @@ export class PremiumService implements OnModuleInit {
         premiumExpiresAt: expiration,
       },
     });
+
+    await this.resolvePendingRequests(profileId, 'premium', actor.id);
 
     await this.afterStatusChange(updated, actor, 'premium.activated', note, {
       expiresAt: expiration?.toISOString() ?? null,
@@ -133,6 +274,8 @@ export class PremiumService implements OnModuleInit {
       },
     });
 
+    await this.resolvePendingRequests(profileId, 'featured', actor.id);
+
     await this.afterStatusChange(updated, actor, 'featured.activated', note, {
       expiresAt: expiration?.toISOString() ?? null,
     });
@@ -178,6 +321,20 @@ export class PremiumService implements OnModuleInit {
     const effective = effectiveProfileStatus(profile);
     const hs = await this.prisma.hotScore.findUnique({ where: { profileId: profile.id } });
 
+    const [latestPremium, latestFeatured] = await Promise.all([
+      this.prisma.boostRequest.findFirst({
+        where: { profileId: profile.id, type: 'premium' },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.boostRequest.findFirst({
+        where: { profileId: profile.id, type: 'featured' },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const canRequestAgain = (latest: { status: string } | null) =>
+      !latest || latest.status === 'rejected' || latest.status === 'approved';
+
     return {
       profileId: profile.id,
       slug: profile.slug,
@@ -192,6 +349,26 @@ export class PremiumService implements OnModuleInit {
       hotScore: hs ? Number(hs.score) : null,
       hotScoreLevel: hs?.level ?? null,
       viewCount: profile.viewCount,
+      premiumRequest: latestPremium
+        ? {
+            id: latestPremium.id,
+            status: latestPremium.status,
+            createdAt: latestPremium.createdAt,
+            rejectionReason: latestPremium.rejectionReason,
+          }
+        : null,
+      featuredRequest: latestFeatured
+        ? {
+            id: latestFeatured.id,
+            status: latestFeatured.status,
+            createdAt: latestFeatured.createdAt,
+            rejectionReason: latestFeatured.rejectionReason,
+          }
+        : null,
+      canRequestPremium:
+        profile.status === 'approved' && !effective.isPremium && canRequestAgain(latestPremium),
+      canRequestFeatured:
+        profile.status === 'approved' && !effective.isFeatured && canRequestAgain(latestFeatured),
     };
   }
 
@@ -231,6 +408,21 @@ export class PremiumService implements OnModuleInit {
     }
 
     return { expired: stale.length };
+  }
+
+  private async resolvePendingRequests(
+    profileId: string,
+    type: BoostRequestType,
+    reviewedBy: string,
+  ) {
+    await this.prisma.boostRequest.updateMany({
+      where: { profileId, type, status: 'pending' },
+      data: {
+        status: 'approved',
+        reviewedBy,
+        reviewedAt: new Date(),
+      },
+    });
   }
 
   private async requireProfile(profileId: string) {
