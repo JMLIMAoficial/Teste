@@ -177,8 +177,8 @@ function ProfileStats({
   overlay?: boolean;
 }) {
   const pillClass = overlay
-    ? "rounded-full bg-bg-primary/90 px-2.5 py-1 text-xs font-medium text-text-primary md:bg-bg-primary/70 md:backdrop-blur-sm"
-    : "rounded-full border border-border-subtle bg-bg-tertiary px-3 py-1 text-sm text-text-secondary";
+    ? "rounded-full border border-orange/50 bg-orange/90 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
+    : "rounded-full border border-gold/50 bg-gold/90 px-3 py-1 text-sm font-medium text-[#1a1408]";
 
   const locationText = profile.locationLabel ?? profile.city;
 
@@ -214,8 +214,8 @@ function ProfileMetaChips({
   overlay?: boolean;
 }) {
   const pillClass = overlay
-    ? "rounded-full bg-bg-primary/90 px-2.5 py-1 text-xs font-medium text-text-primary md:bg-bg-primary/70 md:backdrop-blur-sm"
-    : "rounded-full border border-border-subtle bg-bg-tertiary px-3 py-1 text-sm text-text-secondary";
+    ? "rounded-full border border-orange/50 bg-orange/90 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
+    : "rounded-full border border-gold/50 bg-gold/90 px-3 py-1 text-sm font-medium text-[#1a1408]";
 
   const items: Array<{ emoji: string; label: string }> = [];
   if (profile.preference) items.push({ emoji: "💕", label: profile.preference });
