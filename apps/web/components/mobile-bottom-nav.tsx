@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/", label: "Garotos", icon: "🍆", exact: true },
-  { href: "/momentos", label: "Momentos", icon: "🔥", exact: false },
+  { href: "/", label: "Garotos", exact: true },
+  { href: "/momentos", label: "Momentos", exact: false },
 ] as const;
 
 const HIDDEN_PREFIXES = ["/painel", "/admin", "/login", "/cadastro"];
@@ -25,7 +25,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-purple-light/30 bg-purple-deep pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border-subtle bg-bg-secondary pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <div className="mx-auto flex max-w-lg">
         {tabs.map((tab) => {
@@ -34,15 +34,12 @@ export function MobileBottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
+              className={`flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors ${
                 active
                   ? "text-gold"
-                  : "text-white/70 hover:text-white"
+                  : "text-text-muted hover:text-text-secondary"
               }`}
             >
-              <span className="text-lg leading-none" aria-hidden="true">
-                {tab.icon}
-              </span>
               {tab.label}
             </Link>
           );
