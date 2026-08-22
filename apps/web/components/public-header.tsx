@@ -7,13 +7,13 @@ const navItems = [
 
 export function PublicHeader() {
   return (
-    <header className="sticky top-0 z-50 border-b border-border-subtle bg-bg-primary/95 md:bg-bg-primary/80 md:backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-[#a65f0c]/50 bg-gradient-to-r from-[#e07012] via-[#d98916] to-[#c9971a] shadow-[0_4px_20px_rgba(180,90,10,0.25)]">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-deep to-purple-light">
-            <span className="text-[10px] font-bold tracking-tight text-white">CG</span>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1a1408]/90">
+            <span className="text-[10px] font-bold tracking-tight text-[#f5d78a]">CG</span>
           </div>
-          <span className="truncate text-base font-semibold text-text-primary sm:text-lg">
+          <span className="truncate text-base font-semibold text-[#1a1408] sm:text-lg">
             Clube dos Garotos
           </span>
         </Link>
@@ -23,7 +23,7 @@ export function PublicHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-lg px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg-tertiary hover:text-text-primary"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-[#2a1c08]/85 transition-colors hover:bg-[#1a1408]/10 hover:text-[#1a1408]"
             >
               {item.label}
             </Link>
@@ -32,13 +32,13 @@ export function PublicHeader() {
 
         <Link
           href="/cadastro"
-          className="hidden rounded-xl border border-border-subtle px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary sm:inline-flex"
+          className="hidden rounded-xl border border-[#1a1408]/25 px-4 py-2 text-sm font-medium text-[#1a1408]/80 transition-colors hover:bg-[#1a1408]/10 hover:text-[#1a1408] sm:inline-flex"
         >
           Anunciar
         </Link>
         <Link
           href="/login"
-          className="rounded-xl bg-purple-deep px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-light"
+          className="rounded-xl bg-[#1a1408] px-4 py-2 text-sm font-medium text-[#f5d78a] transition-colors hover:bg-[#2a1f0c]"
         >
           Entrar
         </Link>
