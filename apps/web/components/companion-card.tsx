@@ -12,14 +12,16 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
   const position = profilePositionLabel(profile.position);
   const imageUrl = profile.coverPhotoThumbUrl ?? profile.coverPhotoUrl;
 
+  const frameClass = profile.isFeatured
+    ? "border border-purple-light/50 shadow-[0_0_0_1px_rgba(147,51,234,0.22),0_6px_22px_rgba(107,33,168,0.32)] hover:border-purple-light/70 hover:shadow-[0_0_0_1px_rgba(147,51,234,0.35),0_8px_28px_rgba(107,33,168,0.4)]"
+    : profile.isPremium
+      ? "border border-gold/40 shadow-[0_4px_24px_rgba(0,0,0,0.4)] ring-1 ring-gold/20 hover:border-gold/55 hover:ring-gold/30 hover:shadow-[0_8px_32px_rgba(234,88,12,0.18)]"
+      : "border border-border-subtle shadow-[0_4px_24px_rgba(0,0,0,0.4)] hover:border-orange/35 hover:shadow-[0_8px_32px_rgba(234,88,12,0.18)]";
+
   return (
     <Link
       href={`/perfil/${profile.slug}`}
-      className={`group block overflow-hidden rounded-2xl bg-bg-secondary shadow-[0_4px_24px_rgba(0,0,0,0.4)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(234,88,12,0.18)] ${
-        profile.isPremium
-          ? "border border-gold/40 ring-1 ring-gold/20 hover:border-gold/55 hover:ring-gold/30"
-          : "border border-border-subtle hover:border-orange/35"
-      }`}
+      className={`group block overflow-hidden rounded-2xl bg-bg-secondary transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 ${frameClass}`}
     >
       <div className="relative aspect-[3/4] overflow-hidden">
         {imageUrl ? (
@@ -38,14 +40,14 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
 
         <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
+          {profile.isFeatured && (
+            <span className="rounded-full border border-purple-light/50 bg-purple-deep/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+              Destaque
+            </span>
+          )}
           {profile.isPremium && (
             <span className="rounded-full bg-gradient-to-r from-gold to-orange px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-bg-primary">
               Premium
-            </span>
-          )}
-          {profile.isFeatured && !profile.isPremium && (
-            <span className="rounded-full border border-gold/50 bg-black/55 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">
-              Destaque
             </span>
           )}
           {profile.distanceKm != null && (

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CompanionCard } from "@/components/companion-card";
 import type { CompanionCardData } from "@/lib/mock-data";
 import { fetchNearbyProfiles } from "@/lib/api";
-import { formatDistanceKm, requestUserLocation, type GeoPosition } from "@/lib/geo";
+import { requestUserLocation, type GeoPosition } from "@/lib/geo";
 import {
   CONSENT_CHANGED_EVENT,
   hasConsentDecision,
@@ -17,13 +17,6 @@ const POSITION_OPTIONS = [
   ...PROFILE_POSITIONS,
 ] as const;
 
-type QuickFilter = "verified" | "premium" | "featured" | null;
-
-type GeoState =
-  | { status: "idle" | "loading" }
-  | { status: "ready"; position: GeoPosition }
-  | { status: "denied"; message: string };
-
 type HomeNearbyFeedProps = {
   initialProfiles: CompanionCardData[];
 };
@@ -34,20 +27,12 @@ function rankProfile(a: CompanionCardData, b: CompanionCardData) {
   return score(b) - score(a);
 }
 
-function chipClass(active: boolean) {
-  return active
-    ? "rounded-full border border-orange/60 bg-gradient-to-r from-orange to-gold px-3 py-1.5 text-xs font-semibold text-bg-primary"
-    : "rounded-full border border-border-subtle bg-bg-secondary px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-orange/40 hover:text-text-primary";
-}
-
 export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
-  const [geo, setGeo] = useState<GeoState>({ status: "idle" });
   const [profiles, setProfiles] = useState(initialProfiles);
   const [sortedByDistance, setSortedByDistance] = useState(false);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [positionFilter, setPositionFilter] = useState("");
   const [neighborhoodFilter, setNeighborhoodFilter] = useState("");
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
 
   const loadNearby = useCallback(
     async (position: GeoPosition) => {
@@ -65,16 +50,11 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
   );
 
   const detectLocation = useCallback(async () => {
-    setGeo({ status: "loading" });
     try {
       const position = await requestUserLocation();
-      setGeo({ status: "ready", position });
       await loadNearby(position);
     } catch {
-      setGeo({
-        status: "denied",
-        message: "Localização indisponível",
-      });
+      // Localização opcional: mantém a lista padrão.
     }
   }, [loadNearby]);
 
@@ -102,112 +82,31 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
   const activeNeighborhoodFilter =
     neighborhoodFilter && neighborhoods.includes(neighborhoodFilter) ? neighborhoodFilter : "";
 
-  const verifiedCount = useMemo(
-    () => profiles.filter((p) => p.isVerified).length,
-    [profiles],
-  );
-
   const filteredProfiles = useMemo(() => {
     const list = profiles.filter((profile) => {
       if (positionFilter && profile.position !== positionFilter) return false;
       if (activeNeighborhoodFilter && profile.neighborhood !== activeNeighborhoodFilter) {
         return false;
       }
-      if (quickFilter === "verified" && !profile.isVerified) return false;
-      if (quickFilter === "premium" && !profile.isPremium) return false;
-      if (quickFilter === "featured" && !profile.isFeatured) return false;
       return true;
     });
 
     if (sortedByDistance) return list;
     return [...list].sort(rankProfile);
-  }, [
-    profiles,
-    positionFilter,
-    activeNeighborhoodFilter,
-    quickFilter,
-    sortedByDistance,
-  ]);
-
-  function toggleQuick(next: QuickFilter) {
-    setQuickFilter((current) => (current === next ? null : next));
-  }
+  }, [profiles, positionFilter, activeNeighborhoodFilter, sortedByDistance]);
 
   function clearFilters() {
     setPositionFilter("");
     setNeighborhoodFilter("");
-    setQuickFilter(null);
   }
 
-  const hasFilters = Boolean(positionFilter || activeNeighborhoodFilter || quickFilter);
+  const hasFilters = Boolean(positionFilter || activeNeighborhoodFilter);
 
   return (
     <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary sm:text-2xl">
-            Garotos perto de você
-          </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            {profiles.length} perfil{profiles.length === 1 ? "" : "s"}
-            {verifiedCount > 0 ? ` · ${verifiedCount} verificado${verifiedCount === 1 ? "" : "s"}` : ""}
-            {sortedByDistance && geo.status === "ready"
-              ? filteredProfiles[0]?.distanceKm != null
-                ? ` · mais próximo a ${formatDistanceKm(filteredProfiles[0].distanceKm)}`
-                : " · ordenado por distância"
-              : " · escolha rápido e fale no WhatsApp"}
-          </p>
-        </div>
-
-        {geo.status !== "ready" && (
-          <button
-            type="button"
-            onClick={() => void detectLocation()}
-            disabled={geo.status === "loading" || loadingProfiles}
-            className="rounded-lg border border-orange/40 bg-orange/10 px-3 py-1.5 text-xs font-medium text-orange hover:bg-orange/20 disabled:opacity-50"
-          >
-            {geo.status === "loading" ? "Localizando..." : "Usar localização"}
-          </button>
-        )}
-      </div>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => toggleQuick("verified")}
-          className={chipClass(quickFilter === "verified")}
-        >
-          Verificados
-        </button>
-        <button
-          type="button"
-          onClick={() => toggleQuick("premium")}
-          className={chipClass(quickFilter === "premium")}
-        >
-          Premium
-        </button>
-        <button
-          type="button"
-          onClick={() => toggleQuick("featured")}
-          className={chipClass(quickFilter === "featured")}
-        >
-          Destaque
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (geo.status === "ready") {
-              void loadNearby(geo.position);
-              return;
-            }
-            void detectLocation();
-          }}
-          disabled={geo.status === "loading" || loadingProfiles}
-          className={chipClass(sortedByDistance && geo.status === "ready")}
-        >
-          {geo.status === "loading" || loadingProfiles ? "Localizando…" : "Perto de mim"}
-        </button>
-      </div>
+      <h1 className="mb-5 text-xl font-semibold text-text-primary sm:text-2xl">
+        Garotos perto de você
+      </h1>
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2 text-sm text-text-secondary">
