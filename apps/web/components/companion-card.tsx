@@ -8,22 +8,31 @@ function cardLocation(profile: CompanionCardData) {
   return profile.city.replace(/,\s*[A-Z]{2}$/i, "").trim() || profile.city;
 }
 
+function frameClass(profile: CompanionCardData) {
+  // Premium = borda dourada; Destaque = borda roxa. Os dois juntos: dourado + anel roxo leve.
+  if (profile.isPremium && profile.isFeatured) {
+    return "border-2 border-gold ring-2 ring-purple-light/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)]";
+  }
+  if (profile.isFeatured) {
+    return "border-2 border-purple-light shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:border-[#a855f7]";
+  }
+  if (profile.isPremium) {
+    return "border-2 border-gold shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:border-[#fbbf24]";
+  }
+  return "border border-border-subtle shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:border-orange/35";
+}
+
 export function CompanionCard({ profile }: { profile: CompanionCardData }) {
   const position = profilePositionLabel(profile.position);
   const imageUrl = profile.coverPhotoThumbUrl ?? profile.coverPhotoUrl;
 
-  const frameClass = profile.isFeatured
-    ? "border border-purple-light/50 shadow-[0_0_0_1px_rgba(147,51,234,0.22),0_6px_22px_rgba(107,33,168,0.32)] hover:border-purple-light/70 hover:shadow-[0_0_0_1px_rgba(147,51,234,0.35),0_8px_28px_rgba(107,33,168,0.4)]"
-    : profile.isPremium
-      ? "border border-gold/40 shadow-[0_4px_24px_rgba(0,0,0,0.4)] ring-1 ring-gold/20 hover:border-gold/55 hover:ring-gold/30 hover:shadow-[0_8px_32px_rgba(234,88,12,0.18)]"
-      : "border border-border-subtle shadow-[0_4px_24px_rgba(0,0,0,0.4)] hover:border-orange/35 hover:shadow-[0_8px_32px_rgba(234,88,12,0.18)]";
-
   return (
     <Link
       href={`/perfil/${profile.slug}`}
-      className={`group block overflow-hidden rounded-2xl bg-bg-secondary transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 ${frameClass}`}
+      className={`group block rounded-2xl bg-bg-secondary transition-[border-color,transform] duration-300 hover:-translate-y-0.5 ${frameClass(profile)}`}
     >
-      <div className="relative aspect-[3/4] overflow-hidden">
+      {/* overflow só por dentro para a borda do card não ser cortada */}
+      <div className="relative aspect-[3/4] overflow-hidden rounded-[0.9rem]">
         {imageUrl ? (
           <OptimizedImage
             src={imageUrl}
@@ -41,7 +50,7 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
 
         <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
           {profile.isFeatured && (
-            <span className="rounded-full border border-purple-light/50 bg-purple-deep/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+            <span className="rounded-full border border-purple-light/60 bg-purple-deep/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
               Destaque
             </span>
           )}
