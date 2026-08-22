@@ -89,16 +89,24 @@ export function CompanionAlbumManager() {
     }
   }
 
-  async function uploadPhotos(files: FileList | File[]) {
-    const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+  async function uploadPhotos(files: File[]) {
+    const list = files.filter(
+      (f) =>
+        f.type.startsWith("image/") ||
+        /\.(jpe?g|png|webp)$/i.test(f.name),
+    );
     if (list.length === 0) {
-      notify("Selecione ao menos uma imagem válida.", "error");
+      notify("Selecione ao menos uma imagem válida (JPEG, PNG ou WebP).", "error");
       return;
     }
 
     const remainingSlots = Math.max(0, 20 - (profile?.photos.length ?? 0));
-    const toUpload = list.slice(0, remainingSlots || list.length);
-    if (remainingSlots > 0 && list.length > remainingSlots) {
+    if (remainingSlots === 0) {
+      notify("Limite de 20 fotos atingido.", "error");
+      return;
+    }
+    const toUpload = list.slice(0, remainingSlots);
+    if (list.length > remainingSlots) {
       notify(`Limite de 20 fotos: enviando ${toUpload.length} de ${list.length}.`, "info");
     }
 
@@ -208,9 +216,10 @@ export function CompanionAlbumManager() {
             className="hidden"
             disabled={uploading}
             onChange={(e) => {
-              const files = e.target.files;
+              // Copiar antes de limpar: FileList é live e some ao resetar o value.
+              const files = Array.from(e.target.files ?? []);
               e.target.value = "";
-              if (files?.length) void uploadPhotos(files);
+              if (files.length) void uploadPhotos(files);
             }}
           />
         </label>
