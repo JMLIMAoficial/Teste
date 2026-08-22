@@ -9,17 +9,25 @@ function cardLocation(profile: CompanionCardData) {
 }
 
 function frameClass(profile: CompanionCardData) {
-  // Premium = borda dourada; Destaque = borda roxa. Os dois juntos: dourado + anel roxo leve.
-  if (profile.isPremium && profile.isFeatured) {
-    return "border-2 border-gold ring-2 ring-purple-light/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)]";
-  }
-  if (profile.isFeatured) {
-    return "border-2 border-purple-light shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:border-[#a855f7]";
-  }
+  const parts: string[] = [];
+
+  // Premium = borda dourada
   if (profile.isPremium) {
-    return "border-2 border-gold shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:border-[#fbbf24]";
+    parts.push("border-2 border-gold hover:border-[#fbbf24]");
+  } else {
+    parts.push("border border-border-subtle hover:border-orange/35");
   }
-  return "border border-border-subtle shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:border-orange/35";
+
+  // Destaque = sombra roxa atrás/ao redor do card (leve)
+  if (profile.isFeatured) {
+    parts.push(
+      "shadow-[0_0_18px_rgba(147,51,234,0.45),0_0_36px_rgba(107,33,168,0.28)]",
+    );
+  } else {
+    parts.push("shadow-[0_4px_20px_rgba(0,0,0,0.35)]");
+  }
+
+  return parts.join(" ");
 }
 
 export function CompanionCard({ profile }: { profile: CompanionCardData }) {
@@ -29,9 +37,9 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
   return (
     <Link
       href={`/perfil/${profile.slug}`}
-      className={`group block rounded-2xl bg-bg-secondary transition-[border-color,transform] duration-300 hover:-translate-y-0.5 ${frameClass(profile)}`}
+      className={`group block rounded-2xl bg-bg-secondary transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 ${frameClass(profile)}`}
     >
-      {/* overflow só por dentro para a borda do card não ser cortada */}
+      {/* overflow só no miolo para a sombra do card não ser cortada */}
       <div className="relative aspect-[3/4] overflow-hidden rounded-[0.9rem]">
         {imageUrl ? (
           <OptimizedImage
