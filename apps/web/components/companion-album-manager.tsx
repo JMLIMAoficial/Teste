@@ -28,6 +28,7 @@ export function CompanionAlbumManager() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
 
   function notify(message: string, tone?: "success" | "error" | "info") {
@@ -65,31 +66,72 @@ export function CompanionAlbumManager() {
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   }
 
-  async function uploadPhoto(file: File) {
+  async function uploadOnePhoto(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("role", "album");
+    const token = getAccessToken();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1/companion/photos`,
+      {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+        credentials: "include",
+      },
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const message = Array.isArray(err.message)
+        ? err.message.join(". ")
+        : (err.message ?? "Falha no upload");
+      throw new Error(message);
+    }
+  }
+
+  async function uploadPhotos(files: FileList | File[]) {
+    const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (list.length === 0) {
+      notify("Selecione ao menos uma imagem válida.", "error");
+      return;
+    }
+
+    const remainingSlots = Math.max(0, 20 - (profile?.photos.length ?? 0));
+    const toUpload = list.slice(0, remainingSlots || list.length);
+    if (remainingSlots > 0 && list.length > remainingSlots) {
+      notify(`Limite de 20 fotos: enviando ${toUpload.length} de ${list.length}.`, "info");
+    }
+
     setUploading(true);
+    let ok = 0;
+    const errors: string[] = [];
+
     try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("role", "album");
-      const token = getAccessToken();
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1/companion/photos`,
-        {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: form,
-          credentials: "include",
-        },
-      );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message ?? "Falha no upload");
+      for (let i = 0; i < toUpload.length; i++) {
+        const file = toUpload[i];
+        setUploadProgress(`Enviando ${i + 1} de ${toUpload.length}…`);
+        try {
+          await uploadOnePhoto(file);
+          ok += 1;
+        } catch (err) {
+          errors.push(
+            `${file.name}: ${err instanceof Error ? err.message : "erro"}`,
+          );
+        }
       }
       await load();
-      notify("Foto adicionada ao álbum!", "success");
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Erro no upload", "error");
+      if (ok > 0 && errors.length === 0) {
+        notify(
+          ok === 1 ? "Foto adicionada ao álbum!" : `${ok} fotos adicionadas ao álbum!`,
+          "success",
+        );
+      } else if (ok > 0) {
+        notify(`${ok} enviada(s), ${errors.length} falhou/falharam.`, "info");
+      } else {
+        notify(errors[0] ?? "Erro no upload", "error");
+      }
     } finally {
+      setUploadProgress(null);
       setUploading(false);
     }
   }
@@ -158,19 +200,23 @@ export function CompanionAlbumManager() {
 
       <section className="mt-6 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
         <label className="inline-flex cursor-pointer rounded-xl border border-dashed border-border-subtle px-6 py-4 text-sm text-text-secondary hover:border-purple-deep">
-          {uploading ? "Enviando..." : "Adicionar ao álbum"}
+          {uploading ? uploadProgress ?? "Enviando..." : "Adicionar fotos ao álbum"}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            multiple
             className="hidden"
             disabled={uploading}
             onChange={(e) => {
-              const file = e.target.files?.[0];
+              const files = e.target.files;
               e.target.value = "";
-              if (file) uploadPhoto(file);
+              if (files?.length) void uploadPhotos(files);
             }}
           />
         </label>
+        <p className="mt-2 text-xs text-text-muted">
+          Você pode selecionar várias imagens de uma vez (JPEG, PNG ou WebP).
+        </p>
 
         {album.length > 0 ? (
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
