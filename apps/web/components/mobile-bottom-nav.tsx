@@ -25,7 +25,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border-subtle bg-bg-primary/95 pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-purple-light/30 bg-purple-deep pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <div className="mx-auto flex max-w-lg">
         {tabs.map((tab) => {
@@ -35,7 +35,9 @@ export function MobileBottomNav() {
               key={tab.href}
               href={tab.href}
               className={`flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${
-                active ? "text-purple-light" : "text-text-muted hover:text-text-secondary"
+                active
+                  ? "text-gold"
+                  : "text-white/70 hover:text-white"
               }`}
             >
               <span className="text-lg leading-none" aria-hidden="true">
