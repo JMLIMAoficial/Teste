@@ -28,7 +28,9 @@ export function CompanionAlbumManager() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [uploadCurrent, setUploadCurrent] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
 
   function notify(message: string, tone?: "success" | "error" | "info") {
@@ -111,13 +113,23 @@ export function CompanionAlbumManager() {
     }
 
     setUploading(true);
+    setUploadTotal(toUpload.length);
+    setUploadCurrent(0);
+    setUploadFileName(null);
+    notify(
+      toUpload.length === 1
+        ? "Enviando 1 foto…"
+        : `Enviando ${toUpload.length} fotos…`,
+      "info",
+    );
     let ok = 0;
     const errors: string[] = [];
 
     try {
       for (let i = 0; i < toUpload.length; i++) {
         const file = toUpload[i];
-        setUploadProgress(`Enviando ${i + 1} de ${toUpload.length}…`);
+        setUploadCurrent(i + 1);
+        setUploadFileName(file.name);
         try {
           await uploadOnePhoto(file);
           ok += 1;
@@ -139,7 +151,9 @@ export function CompanionAlbumManager() {
         notify(errors[0] ?? "Erro no upload", "error");
       }
     } finally {
-      setUploadProgress(null);
+      setUploadCurrent(0);
+      setUploadTotal(0);
+      setUploadFileName(null);
       setUploading(false);
     }
   }
@@ -191,6 +205,8 @@ export function CompanionAlbumManager() {
   }
 
   const album = albumPhotos();
+  const uploadPercent =
+    uploadTotal > 0 ? Math.round((uploadCurrent / uploadTotal) * 100) : 0;
 
   return (
     <div>
@@ -207,22 +223,55 @@ export function CompanionAlbumManager() {
       </p>
 
       <section className="mt-6 rounded-2xl border border-border-subtle bg-bg-secondary p-6">
-        <label className="inline-flex cursor-pointer rounded-xl border border-dashed border-border-subtle px-6 py-4 text-sm text-text-secondary hover:border-purple-deep">
-          {uploading ? uploadProgress ?? "Enviando..." : "Adicionar fotos ao álbum"}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            className="hidden"
-            disabled={uploading}
-            onChange={(e) => {
-              // Copiar antes de limpar: FileList é live e some ao resetar o value.
-              const files = Array.from(e.target.files ?? []);
-              e.target.value = "";
-              if (files.length) void uploadPhotos(files);
-            }}
-          />
-        </label>
+        {uploading ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-orange/40 bg-orange/15 px-4 py-4 shadow-[0_0_0_1px_rgba(234,88,12,0.15)]"
+          >
+            <div className="flex items-start gap-3">
+              <span
+                className="mt-0.5 inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-orange border-t-transparent"
+                aria-hidden
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-base font-semibold text-orange">
+                  Carregando fotos… {uploadCurrent} de {uploadTotal}
+                </p>
+                <p className="mt-1 truncate text-sm text-text-primary">
+                  {uploadFileName
+                    ? `Arquivo: ${uploadFileName}`
+                    : "Preparando envio…"}
+                </p>
+                <div className="mt-3 h-3 overflow-hidden rounded-full bg-bg-primary/80">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-orange to-gold transition-[width] duration-300 ease-out"
+                    style={{ width: `${uploadPercent}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-xs font-medium text-text-secondary">
+                  {uploadPercent}% concluído — não feche esta página
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <label className="inline-flex cursor-pointer rounded-xl border border-dashed border-border-subtle px-6 py-4 text-sm text-text-secondary hover:border-purple-deep">
+            Adicionar fotos ao álbum
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                // Copiar antes de limpar: FileList é live e some ao resetar o value.
+                const files = Array.from(e.target.files ?? []);
+                e.target.value = "";
+                if (files.length) void uploadPhotos(files);
+              }}
+            />
+          </label>
+        )}
         <p className="mt-2 text-xs text-text-muted">
           Você pode selecionar várias imagens de uma vez (JPEG, PNG ou WebP).
         </p>
