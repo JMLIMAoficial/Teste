@@ -17,6 +17,7 @@ type DemoProfile = {
   displayName: string;
   city: string;
   state: string;
+  neighborhood: string;
   cep: string;
   lat: number;
   lng: number;
@@ -27,6 +28,7 @@ type DemoProfile = {
   penisSizeCm: number;
   isPremium: boolean;
   isFeatured: boolean;
+  isVerified: boolean;
   viewCount: number;
   whatsapp: string;
   tags: string[];
@@ -159,6 +161,7 @@ async function upsertCompanion(companionRoleId: string, demo: DemoProfile) {
         isPublic: true,
         isPremium: demo.isPremium,
         isFeatured: demo.isFeatured,
+        isVerified: demo.isVerified,
         viewCount: demo.viewCount,
         whatsapp: encryptValue(demo.whatsapp, WHATSAPP_KEY),
       },
@@ -189,6 +192,7 @@ async function upsertCompanion(companionRoleId: string, demo: DemoProfile) {
         isPublic: true,
         isPremium: demo.isPremium,
         isFeatured: demo.isFeatured,
+        isVerified: demo.isVerified,
         penisSizeCm: demo.penisSizeCm,
         viewCount: demo.viewCount,
         whatsapp: encryptValue(demo.whatsapp, WHATSAPP_KEY),
@@ -196,6 +200,7 @@ async function upsertCompanion(companionRoleId: string, demo: DemoProfile) {
           create: {
             city: demo.city,
             state: demo.state,
+            neighborhood: demo.neighborhood,
             cep: demo.cep,
             latitude: demo.lat,
             longitude: demo.lng,
@@ -213,6 +218,7 @@ async function upsertCompanion(companionRoleId: string, demo: DemoProfile) {
     create: {
       profileId: profile.id,
       cep: demo.cep,
+      neighborhood: demo.neighborhood,
       city: demo.city,
       state: demo.state,
       latitude: demo.lat,
@@ -220,6 +226,7 @@ async function upsertCompanion(companionRoleId: string, demo: DemoProfile) {
     },
     update: {
       cep: demo.cep,
+      neighborhood: demo.neighborhood,
       city: demo.city,
       state: demo.state,
       latitude: demo.lat,
@@ -327,8 +334,12 @@ async function wipeAllProfiles(adminUserId?: string) {
 }
 
 async function main() {
-  if (process.env.NODE_ENV === 'production') {
-    console.error('Refusing to run seed in production (NODE_ENV=production).');
+  const allowProd =
+    process.env.ALLOW_SEED_IN_PRODUCTION === '1' || process.argv.includes('--allow-production');
+  if (process.env.NODE_ENV === 'production' && !allowProd) {
+    console.error(
+      'Refusing to run seed in production. Set ALLOW_SEED_IN_PRODUCTION=1 to populate prod once.',
+    );
     process.exit(1);
   }
 
@@ -410,11 +421,12 @@ async function main() {
 
   const demoProfiles: DemoProfile[] = [
     {
-      email: 'maria@demo.local',
-      slug: 'maria-santos',
+      email: 'lucas@demo.local',
+      slug: 'lucas-santos',
       displayName: 'Lucas Santos',
       city: 'São Paulo',
       state: 'SP',
+      neighborhood: 'Jardins',
       cep: '01310-100',
       lat: -23.5613,
       lng: -46.6565,
@@ -425,6 +437,7 @@ async function main() {
       penisSizeCm: 18,
       isPremium: true,
       isFeatured: true,
+      isVerified: true,
       viewCount: 420,
       whatsapp: '5511999887766',
       tags: ['massagem', 'jantar', 'viagem'],
@@ -432,11 +445,12 @@ async function main() {
       momentCaptions: ['Treino feito!', 'Noite em SP'],
     },
     {
-      email: 'ana@demo.local',
-      slug: 'ana-oliveira',
+      email: 'rafael@demo.local',
+      slug: 'rafael-oliveira',
       displayName: 'Rafael Oliveira',
       city: 'Rio de Janeiro',
       state: 'RJ',
+      neighborhood: 'Copacabana',
       cep: '22041-001',
       lat: -22.9711,
       lng: -43.1822,
@@ -447,6 +461,7 @@ async function main() {
       penisSizeCm: 16,
       isPremium: true,
       isFeatured: false,
+      isVerified: true,
       viewCount: 310,
       whatsapp: '5521999887766',
       tags: ['eventos', 'companhia', 'premium'],
@@ -454,11 +469,12 @@ async function main() {
       momentCaptions: ['Pôr do sol no Arpoador'],
     },
     {
-      email: 'julia@demo.local',
-      slug: 'julia-costa',
+      email: 'bruno@demo.local',
+      slug: 'bruno-costa',
       displayName: 'Bruno Costa',
       city: 'Belo Horizonte',
       state: 'MG',
+      neighborhood: 'Savassi',
       cep: '30130-100',
       lat: -19.9245,
       lng: -43.9352,
@@ -469,18 +485,20 @@ async function main() {
       penisSizeCm: 20,
       isPremium: false,
       isFeatured: true,
+      isVerified: false,
       viewCount: 280,
       whatsapp: '5531999887766',
       tags: ['fitness', 'gastronomia', 'arte'],
       photoSeeds: ['bruno-bh-1', 'bruno-bh-2', 'bruno-bh-3'],
     },
     {
-      email: 'camila@demo.local',
-      slug: 'camila-ferreira',
+      email: 'diego@demo.local',
+      slug: 'diego-ferreira',
       displayName: 'Diego Ferreira',
       city: 'Curitiba',
       state: 'PR',
-      cep: '80010-000',
+      neighborhood: 'Batel',
+      cep: '80420-090',
       lat: -25.4284,
       lng: -49.2733,
       birthDate: new Date('1997-05-30'),
@@ -490,6 +508,7 @@ async function main() {
       penisSizeCm: 17,
       isPremium: false,
       isFeatured: false,
+      isVerified: true,
       viewCount: 190,
       whatsapp: '5541999887766',
       tags: ['viagem', 'cultura', 'musica'],
@@ -501,7 +520,8 @@ async function main() {
       displayName: 'Thiago Rocha',
       city: 'Porto Alegre',
       state: 'RS',
-      cep: '90010-000',
+      neighborhood: 'Moinhos de Vento',
+      cep: '90570-001',
       lat: -30.0346,
       lng: -51.2177,
       birthDate: new Date('1998-02-14'),
@@ -511,6 +531,7 @@ async function main() {
       penisSizeCm: 16,
       isPremium: false,
       isFeatured: true,
+      isVerified: true,
       viewCount: 155,
       whatsapp: '5551999887766',
       tags: ['companhia', 'eventos', 'exclusivo'],
@@ -523,7 +544,8 @@ async function main() {
       displayName: 'Gabriel Nunes',
       city: 'Salvador',
       state: 'BA',
-      cep: '40020-000',
+      neighborhood: 'Barra',
+      cep: '40140-130',
       lat: -12.9777,
       lng: -38.5016,
       birthDate: new Date('1995-09-03'),
@@ -533,6 +555,7 @@ async function main() {
       penisSizeCm: 19,
       isPremium: true,
       isFeatured: true,
+      isVerified: true,
       viewCount: 360,
       whatsapp: '5571999887766',
       tags: ['premium', 'viagem', 'eventos'],
@@ -545,6 +568,7 @@ async function main() {
       displayName: 'Pedro Martins',
       city: 'Fortaleza',
       state: 'CE',
+      neighborhood: 'Meireles',
       cep: '60165-121',
       lat: -3.7319,
       lng: -38.5267,
@@ -555,6 +579,7 @@ async function main() {
       penisSizeCm: 18,
       isPremium: false,
       isFeatured: false,
+      isVerified: false,
       viewCount: 120,
       whatsapp: '5585999887766',
       tags: ['massagem', 'companhia', 'fitness'],
@@ -566,7 +591,8 @@ async function main() {
       displayName: 'Mateus Cardoso',
       city: 'Florianópolis',
       state: 'SC',
-      cep: '88015-100',
+      neighborhood: 'Jurerê',
+      cep: '88053-000',
       lat: -27.5954,
       lng: -48.548,
       birthDate: new Date('1999-12-01'),
@@ -576,6 +602,7 @@ async function main() {
       penisSizeCm: 17,
       isPremium: true,
       isFeatured: false,
+      isVerified: true,
       viewCount: 240,
       whatsapp: '5548999887766',
       tags: ['viagem', 'gastronomia', 'musica'],
@@ -588,6 +615,7 @@ async function main() {
       displayName: 'Vinícius Almeida',
       city: 'Brasília',
       state: 'DF',
+      neighborhood: 'Asa Sul',
       cep: '70040-010',
       lat: -15.7942,
       lng: -47.8822,
@@ -598,6 +626,7 @@ async function main() {
       penisSizeCm: 20,
       isPremium: true,
       isFeatured: true,
+      isVerified: true,
       viewCount: 390,
       whatsapp: '5561999887766',
       tags: ['jantar', 'eventos', 'exclusivo'],
@@ -605,33 +634,13 @@ async function main() {
       momentCaptions: ['Esq. da 114'],
     },
     {
-      email: 'leo@demo.local',
-      slug: 'leo-barbosa',
-      displayName: 'Leo Barbosa',
-      city: 'Recife',
-      state: 'PE',
-      cep: '50030-230',
-      lat: -8.0476,
-      lng: -34.877,
-      birthDate: new Date('2002-08-11'),
-      bio: 'Novinho de Recife, passivo, muito carinhoso. Primeira vez? Sem pressa.',
-      preference: 'Homens',
-      position: 'passive',
-      penisSizeCm: 15,
-      isPremium: false,
-      isFeatured: false,
-      viewCount: 95,
-      whatsapp: '5581999887766',
-      tags: ['companhia', 'massagem', 'cultura'],
-      photoSeeds: ['leo-rec-1', 'leo-rec-2'],
-    },
-    {
       email: 'caio@demo.local',
       slug: 'caio-pires',
       displayName: 'Caio Pires',
       city: 'Campinas',
       state: 'SP',
-      cep: '13015-000',
+      neighborhood: 'Cambuí',
+      cep: '13025-320',
       lat: -22.9099,
       lng: -47.0626,
       birthDate: new Date('1997-01-07'),
@@ -641,32 +650,12 @@ async function main() {
       penisSizeCm: 19,
       isPremium: false,
       isFeatured: true,
+      isVerified: false,
       viewCount: 175,
       whatsapp: '5519999887766',
       tags: ['fitness', 'premium', 'companhia'],
       photoSeeds: ['caio-cps-1', 'caio-cps-2', 'caio-cps-3'],
       momentCaptions: ['Leg day'],
-    },
-    {
-      email: 'renan@demo.local',
-      slug: 'renan-dias',
-      displayName: 'Renan Dias',
-      city: 'Goiânia',
-      state: 'GO',
-      cep: '74015-010',
-      lat: -16.6869,
-      lng: -49.2648,
-      birthDate: new Date('1996-10-30'),
-      bio: 'Goiano alto, barba e tatuagem. Festa, bar e companhia sem frescura.',
-      preference: 'Homens e mulheres',
-      position: 'versatile',
-      penisSizeCm: 18,
-      isPremium: false,
-      isFeatured: false,
-      viewCount: 130,
-      whatsapp: '5562999887766',
-      tags: ['eventos', 'musica', 'gastronomia'],
-      photoSeeds: ['renan-gyn-1', 'renan-gyn-2'],
     },
   ];
 
@@ -748,8 +737,8 @@ async function main() {
     await prisma.tag.update({ where: { id: tagId }, data: { profileCount: count } });
   }
 
-  const maria = await prisma.profile.findUnique({ where: { slug: 'maria-santos' } });
-  if (maria) {
+  const lucas = await prisma.profile.findUnique({ where: { slug: 'lucas-santos' } });
+  if (lucas) {
     const reviewData = [
       { authorName: 'Carlos M.', rating: 5, comment: 'Excelente companhia, muito discreto e atencioso.' },
       { authorName: 'Pedro R.', rating: 4, comment: 'Ótima experiência, recomendo.' },
@@ -759,13 +748,13 @@ async function main() {
     for (const r of reviewData) {
       const fp = `demo-${r.authorName.toLowerCase().replace(/\s/g, '-')}`;
       const exists = await prisma.review.findFirst({
-        where: { profileId: maria.id, authorFingerprint: fp },
+        where: { profileId: lucas.id, authorFingerprint: fp },
       });
       if (exists) continue;
 
       await prisma.review.create({
         data: {
-          profileId: maria.id,
+          profileId: lucas.id,
           authorName: r.authorName,
           authorFingerprint: fp,
           rating: r.rating,
@@ -777,9 +766,9 @@ async function main() {
 
     const dist = { '1': 0, '2': 0, '3': 0, '4': 1, '5': 2 };
     await prisma.reviewSummary.upsert({
-      where: { profileId: maria.id },
+      where: { profileId: lucas.id },
       create: {
-        profileId: maria.id,
+        profileId: lucas.id,
         averageRating: 4.67,
         reviewCount: 3,
         distribution: dist,
@@ -796,7 +785,7 @@ async function main() {
       const exists = await prisma.comment.findFirst({
         where: {
           targetType: 'profile',
-          targetId: maria.id,
+          targetId: lucas.id,
           authorName: c.authorName,
           content: c.content,
         },
@@ -806,8 +795,8 @@ async function main() {
       await prisma.comment.create({
         data: {
           targetType: 'profile',
-          targetId: maria.id,
-          profileId: maria.id,
+          targetId: lucas.id,
+          profileId: lucas.id,
           authorName: c.authorName,
           content: c.content,
           status: 'approved',
@@ -815,7 +804,7 @@ async function main() {
       });
     }
 
-    console.log('  Demo reviews/comments for maria-santos (Lucas Santos)');
+    console.log('  Demo reviews/comments for lucas-santos');
   }
 
   const siteDefaults: Record<string, string> = {

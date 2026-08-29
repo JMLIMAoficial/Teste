@@ -17,6 +17,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "npx prisma db seed",
+    "db:seed:prod": "npx tsx prisma/seed.ts --allow-production",
     "db:reset-profiles": "npx tsx prisma/seed.ts --reset",
     "start:api:railway": "prisma migrate deploy && npm run start:prod --workspace=@acompannhante/api",
     "db:studio": "prisma studio",
