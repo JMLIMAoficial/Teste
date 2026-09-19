@@ -46,7 +46,7 @@ try {
 } catch {
   Write-Host "ERRO no restore: $($_.Exception.Message)" -ForegroundColor Red
   Write-Host "Removendo MEDIA_RESTORE_KEY mesmo assim..."
-  npx railway variables delete MEDIA_RESTORE_KEY -s $ApiService -e production --skip-deploys 2>$null
+  npx railway variables delete MEDIA_RESTORE_KEY -s $ApiService -e production 2>$null
   exit 1
 }
 

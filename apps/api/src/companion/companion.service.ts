@@ -250,10 +250,21 @@ export class CompanionService {
       include: {
         location: true,
         tags: { orderBy: { sortOrder: 'asc' } },
+        pricing: true,
+        availability: { orderBy: { dayOfWeek: 'asc' } },
         photos: {
-          where: { status: 'approved' },
+          // Prévia do dono: mostra mídia ainda em moderação (pending).
+          where: { status: { in: ['pending', 'approved'] } },
           include: { mediaAsset: true },
-          orderBy: [{ isCover: 'desc' }, { sortOrder: 'asc' }],
+          orderBy: [{ isCover: 'desc' }, { isProfile: 'desc' }, { sortOrder: 'asc' }],
+        },
+        videos: {
+          where: {
+            deletedAt: null,
+            status: { in: ['pending', 'approved'] },
+          },
+          include: { mediaAsset: true },
+          orderBy: { createdAt: 'desc' },
         },
       },
     });
@@ -302,9 +313,50 @@ export class CompanionService {
             thumbUrl: urls.coverPhotoThumbUrl,
             isCover: p.isCover,
             isProfile: p.isProfile,
+            status: p.status,
           };
         }),
     );
+
+    const videos = profile.videos.map((v) => ({
+      id: v.id,
+      title: v.title ?? `${profile.displayName} — Vídeo`,
+      description: v.description,
+      status: v.status,
+      url: this.storage.getPublicUrl(v.mediaAsset.storagePath),
+      mimeType: v.mediaAsset.mimeType,
+      viewCount: v.viewCount,
+      likeCount: v.likeCount,
+      commentCount: v.commentCount,
+      profileName: profile.displayName,
+      profileSlug: profile.slug,
+      createdAt: v.createdAt,
+    }));
+
+    const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const availability = profile.availability
+      .filter((row) => row.isAvailable && row.startTime && row.endTime)
+      .map((row) => ({
+        dayOfWeek: row.dayOfWeek,
+        label: dayLabels[row.dayOfWeek] ?? String(row.dayOfWeek),
+        startTime: row.startTime!,
+        endTime: row.endTime!,
+      }));
+
+    let pricing: Record<string, unknown> | null = null;
+    if (profile.pricingDisplayMode === 'consult') {
+      pricing = { mode: 'consult' };
+    } else if (profile.pricingDisplayMode === 'show') {
+      pricing = {
+        mode: 'show',
+        thirtyMin: profile.pricing?.thirtyMin ?? null,
+        oneHour: profile.pricing?.oneHour ?? null,
+        twoHours: profile.pricing?.twoHours ?? null,
+        overnight: profile.pricing?.overnight ?? null,
+        customItems:
+          (profile.pricing?.customItems as Array<{ label: string; price: number }>) ?? [],
+      };
+    }
 
     return {
       ...card,
@@ -312,11 +364,15 @@ export class CompanionService {
       bio: profile.bio,
       status: profile.status,
       isPublic: profile.isPublic,
+      preference: profile.sexualPreference ?? card.preference,
       memberSince: formatMemberSince(profile.createdAt),
       ...buildProfileLocationFields(profile.location),
       photos,
+      videos,
       coverPhotoUrl: mainUrls?.coverPhotoUrl ?? null,
       coverPhotoThumbUrl: mainUrls?.coverPhotoThumbUrl ?? null,
+      pricing,
+      availability,
       socialLinks: parseSocialLinks(profile.socialLinks),
       ...this.contact.buildPublicContact(profile.whatsapp, profile.displayName),
     };

@@ -413,7 +413,7 @@ export default function PainelDashboardPage() {
             {
               href: "/painel/videos",
               title: "Vídeos",
-              desc: "Upload e status de moderação",
+              desc: "Publicação imediata no perfil",
             },
             {
               href: "/painel/mensagens",

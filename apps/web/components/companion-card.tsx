@@ -96,6 +96,7 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-sm text-white/95">
               {profile.penisSizeCm != null && (
                 <span aria-label={`${profile.penisSizeCm} centímetros`}>
+                  <span aria-hidden>🍆 </span>
                   {profile.penisSizeCm} cm
                 </span>
               )}
@@ -104,7 +105,12 @@ export function CompanionCard({ profile }: { profile: CompanionCardData }) {
                   ·
                 </span>
               )}
-              {position && <span>{position}</span>}
+              {position && (
+                <span>
+                  <span aria-hidden>🛏️ </span>
+                  {position}
+                </span>
+              )}
             </p>
           )}
           {profile.tags.length > 0 && (

@@ -13,7 +13,7 @@ import {
 import { PROFILE_POSITIONS } from "@/lib/profile-position";
 
 const POSITION_OPTIONS = [
-  { value: "", label: "Todas" },
+  { value: "", label: "Preferência" },
   ...PROFILE_POSITIONS,
 ] as const;
 
@@ -105,52 +105,59 @@ export function HomeNearbyFeed({ initialProfiles }: HomeNearbyFeedProps) {
   return (
     <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="mb-5 text-xl font-semibold text-text-primary sm:text-2xl">
-        Garotos perto de você
+        Acompanhante Masculino
       </h1>
 
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-sm text-text-secondary">
-          <span className="text-text-muted">Posição</span>
-          <select
-            value={positionFilter}
-            onChange={(e) => setPositionFilter(e.target.value)}
-            className="rounded-lg border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-primary"
-          >
-            {POSITION_OPTIONS.map((opt) => (
-              <option key={opt.value || "all"} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <select
+          aria-label="Preferência"
+          value={positionFilter}
+          onChange={(e) => setPositionFilter(e.target.value)}
+          className="rounded-lg border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-primary"
+        >
+          {POSITION_OPTIONS.map((opt) => (
+            <option key={opt.value || "all"} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
 
-        <label className="flex items-center gap-2 text-sm text-text-secondary">
-          <span className="text-text-muted">Bairro</span>
-          <select
-            value={activeNeighborhoodFilter}
-            onChange={(e) => setNeighborhoodFilter(e.target.value)}
-            disabled={neighborhoods.length === 0}
-            className="max-w-[12rem] rounded-lg border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-primary disabled:opacity-50"
-          >
-            <option value="">Todos</option>
-            {neighborhoods.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        <select
+          aria-label="Bairro"
+          value={activeNeighborhoodFilter}
+          onChange={(e) => setNeighborhoodFilter(e.target.value)}
+          disabled={neighborhoods.length === 0}
+          className="max-w-[12rem] rounded-lg border border-border-subtle bg-bg-secondary px-3 py-1.5 text-sm text-text-primary disabled:opacity-50"
+        >
+          <option value="">Bairro</option>
+          {neighborhoods.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
 
         {hasFilters && (
           <button
             type="button"
             onClick={clearFilters}
-            className="text-xs text-orange hover:text-gold"
+            aria-label="Limpar filtros"
+            title="Limpar filtros"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition-colors hover:border-red-500/70 hover:bg-red-500/20 hover:text-red-300"
           >
-            Limpar filtros
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              className="h-4 w-4"
+              aria-hidden
+            >
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
           </button>
-        )}
-      </div>
+        )}      </div>
 
       {loadingProfiles && (
         <div className="mb-3 flex items-center gap-2 text-xs text-text-muted">

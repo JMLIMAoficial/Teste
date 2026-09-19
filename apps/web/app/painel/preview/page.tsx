@@ -24,7 +24,13 @@ type PreviewProfile = {
   tags?: string[];
   status: string;
   isPublic: boolean;
-  photos?: Array<{ id: string; url: string; isCover: boolean }>;
+  photos?: Array<{
+    id: string;
+    url: string;
+    thumbUrl?: string;
+    isCover: boolean;
+    isProfile?: boolean;
+  }>;
   coverPhotoUrl?: string | null;
   hotScore?: number;
   hotScoreLabel?: string;
@@ -34,6 +40,21 @@ type PreviewProfile = {
   hasWhatsApp?: boolean;
   whatsappUrl?: string;
   socialLinks?: Partial<Record<"privacy" | "onlyfans" | "x" | "instagram", string>>;
+  pricing?: {
+    mode: "show" | "consult";
+    thirtyMin?: number | null;
+    oneHour?: number | null;
+    twoHours?: number | null;
+    overnight?: number | null;
+    customItems?: Array<{ label: string; price: number }>;
+  } | null;
+  availability?: Array<{
+    dayOfWeek: number;
+    label: string;
+    startTime: string;
+    endTime: string;
+  }>;
+  videos?: VideoItem[];
   id?: string;
 };
 
@@ -48,13 +69,10 @@ export default function PainelPreviewPage() {
       router.replace("/login");
       return;
     }
-    Promise.all([
-      apiFetch<PreviewProfile>("/v1/companion/profile/preview"),
-      apiFetch<{ data: VideoItem[] }>("/v1/companion/videos"),
-    ])
-      .then(([preview, videosRes]) => {
+    apiFetch<PreviewProfile>("/v1/companion/profile/preview")
+      .then((preview) => {
         setProfile(preview);
-        setVideos(videosRes.data ?? []);
+        setVideos(preview.videos ?? []);
       })
       .catch(() => router.replace("/painel"))
       .finally(() => setLoading(false));
@@ -81,6 +99,7 @@ export default function PainelPreviewPage() {
         Modo pré-visualização — {profile.status !== "approved" || !profile.isPublic
           ? `seu perfil ainda não está público (status: ${profile.status}).`
           : "este é o visual do seu perfil público."}
+        {" "}Fotos em moderação também aparecem aqui.
       </div>
 
       <ProfilePageView
@@ -112,6 +131,8 @@ export default function PainelPreviewPage() {
           hasWhatsApp: profile.hasWhatsApp,
           whatsappUrl: profile.whatsappUrl,
           socialLinks: profile.socialLinks,
+          pricing: profile.pricing ?? null,
+          availability: profile.availability ?? [],
         }}
         videos={videos}
         reviews={[]}

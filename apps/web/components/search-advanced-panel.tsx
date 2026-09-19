@@ -132,7 +132,7 @@ export function SearchAdvancedPanel({ params, tags = [] }: SearchAdvancedPanelPr
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-xs font-medium text-text-muted">Posição</span>
+            <span className="mb-1.5 block text-xs font-medium text-text-muted">Preferência</span>
             <select
               name="posicao"
               defaultValue={params.posicao ?? ""}

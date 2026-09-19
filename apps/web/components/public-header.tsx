@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobileHeaderMenuButton } from "@/components/mobile-bottom-nav";
 
 const navItems = [
   { label: "Garotos", href: "/" },
@@ -18,7 +19,7 @@ export function PublicHeader() {
           </span>
         </Link>
 
-        <nav className="hidden flex-1 items-center justify-center gap-1 md:flex lg:justify-end">
+        <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex lg:justify-end">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -30,18 +31,21 @@ export function PublicHeader() {
           ))}
         </nav>
 
-        <Link
-          href="/cadastro"
-          className="hidden rounded-xl border border-[#1a1408]/25 px-4 py-2 text-sm font-medium text-[#1a1408]/80 transition-colors hover:bg-[#1a1408]/10 hover:text-[#1a1408] sm:inline-flex"
-        >
-          Anunciar
-        </Link>
-        <Link
-          href="/login"
-          className="rounded-xl bg-[#1a1408] px-4 py-2 text-sm font-medium text-[#f5d78a] transition-colors hover:bg-[#2a1f0c]"
-        >
-          Entrar
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <MobileHeaderMenuButton />
+          <Link
+            href="/cadastro"
+            className="hidden rounded-xl border border-[#1a1408]/25 px-4 py-2 text-sm font-medium text-[#1a1408]/80 transition-colors hover:bg-[#1a1408]/10 hover:text-[#1a1408] sm:inline-flex lg:inline-flex"
+          >
+            Anunciar
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-xl bg-[#1a1408] px-4 py-2 text-sm font-medium text-[#f5d78a] transition-colors hover:bg-[#2a1f0c]"
+          >
+            Entrar
+          </Link>
+        </div>
       </div>
     </header>
   );

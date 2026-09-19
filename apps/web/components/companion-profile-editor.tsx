@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch, clearAccessToken, fetchMe, getAccessToken } from "@/lib/auth";
 import { getProfileCompletion, type ProfileCompletion } from "@/lib/profile-completion";
 import { PROFILE_POSITIONS } from "@/lib/profile-position";
+import { formatPhoneMask, isAllDayAvailability } from "@/lib/utils";
 import { toastToneFromMessage, useToast } from "@/components/toast";
 const PREFERENCES = ["Heterossexual", "Homossexual", "Bissexual", "Pansexual"];
 
@@ -814,7 +815,7 @@ export function CompanionProfileEditor() {
                 <div className="min-w-0 flex-1 text-center sm:text-left">
                   <p className="font-semibold text-text-primary">Uma foto para tudo</p>
                   <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                    Aparece nos cards da home, nas buscas e no topo da sua página pública.
+                    Aparece nos cards da home, escolha uma que chame atenção.
                   </p>
                   <label className="mt-3 inline-flex cursor-pointer rounded-xl bg-purple-deep px-4 py-2 text-sm font-medium text-white hover:bg-purple-light">
                     {uploadingRole === "main"
@@ -1087,9 +1088,12 @@ export function CompanionProfileEditor() {
           </p>
           <input
             type="tel"
+            inputMode="numeric"
+            autoComplete="tel-national"
             value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
-            placeholder="(11) 99999-9999"
+            onChange={(e) => setWhatsapp(formatPhoneMask(e.target.value))}
+            placeholder="(xx) xxxxx-xxxx"
+            maxLength={15}
             className={`mt-3 max-w-xs ${inputClass}`}
           />
         </section>
@@ -1237,19 +1241,45 @@ export function CompanionProfileEditor() {
                 </label>
                 {day.isAvailable && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="time"
-                      value={day.startTime ?? ""}
-                      onChange={(e) => updateAvailabilityDay(index, { startTime: e.target.value })}
-                      className="rounded-xl border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary"
-                    />
-                    <span className="text-text-muted">até</span>
-                    <input
-                      type="time"
-                      value={day.endTime ?? ""}
-                      onChange={(e) => updateAvailabilityDay(index, { endTime: e.target.value })}
-                      className="rounded-xl border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary"
-                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateAvailabilityDay(
+                          index,
+                          isAllDayAvailability(day.startTime, day.endTime)
+                            ? { startTime: "10:00", endTime: "22:00" }
+                            : { startTime: "00:00", endTime: "23:59" },
+                        )
+                      }
+                      className={`rounded-xl border px-3 py-2 text-sm font-medium ${
+                        isAllDayAvailability(day.startTime, day.endTime)
+                          ? "border-purple-deep bg-purple-deep/20 text-purple-light"
+                          : "border-border-subtle text-text-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      24h
+                    </button>
+                    {!isAllDayAvailability(day.startTime, day.endTime) && (
+                      <>
+                        <input
+                          type="time"
+                          value={day.startTime ?? ""}
+                          onChange={(e) =>
+                            updateAvailabilityDay(index, { startTime: e.target.value })
+                          }
+                          className="rounded-xl border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary"
+                        />
+                        <span className="text-text-muted">até</span>
+                        <input
+                          type="time"
+                          value={day.endTime ?? ""}
+                          onChange={(e) =>
+                            updateAvailabilityDay(index, { endTime: e.target.value })
+                          }
+                          className="rounded-xl border border-border-subtle bg-bg-secondary px-3 py-2 text-sm text-text-primary"
+                        />
+                      </>
+                    )}
                   </div>
                 )}
               </div>

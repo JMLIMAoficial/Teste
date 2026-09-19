@@ -13,7 +13,7 @@ type OwnVideo = {
 };
 
 function mediaStatusLabel(status: string) {
-  if (status === "approved") return "Aprovado";
+  if (status === "approved") return "Publicado";
   if (status === "rejected") return "Rejeitado";
   if (status === "pending") return "Em análise";
   return status;
@@ -75,7 +75,7 @@ export function CompanionVideosManager() {
         throw new Error(err.message ?? "Falha no upload");
       }
       await load();
-      notify("Vídeo enviado! Aguarde a moderação.", "success");
+      notify("Vídeo publicado no perfil.", "success");
     } catch (err) {
       notify(err instanceof Error ? err.message : "Erro no upload", "error");
     } finally {
@@ -91,7 +91,7 @@ export function CompanionVideosManager() {
     <div>
       <h1 className="text-2xl font-semibold text-text-primary">Vídeos</h1>
       <p className="mt-1 text-sm text-text-muted">
-        MP4 ou WebM — máx. 50MB. Aguardam moderação antes de aparecer no perfil público.
+        MP4 ou WebM — máx. 50MB. Publicados na hora no seu perfil.
       </p>
 
       <section className="mt-6 rounded-2xl border border-border-subtle bg-bg-secondary p-6">

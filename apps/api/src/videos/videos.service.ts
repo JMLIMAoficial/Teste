@@ -55,7 +55,7 @@ export class VideosService {
         mediaAssetId: asset.id,
         title: meta?.title,
         description: meta?.description,
-        status: 'pending',
+        status: 'approved',
       },
       include: { mediaAsset: true },
     });

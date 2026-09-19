@@ -8,7 +8,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <div className={showNav ? "pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0" : undefined}>
+      <div className={showNav ? "pb-[calc(3.25rem+env(safe-area-inset-bottom))] lg:pb-0" : undefined}>
         {children}
         <MobileBottomNav />
       </div>

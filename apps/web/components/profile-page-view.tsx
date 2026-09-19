@@ -299,10 +299,10 @@ function ProfileSafetyNotice() {
         Atenção
       </p>
       <p className="mt-2">
-        Informe que viu o anunciante neste site. Não nos envolvemos em tratativas entre as partes.
-        Todo atendimento deve ser alinhado com o anunciante antes do encontro.
+        Não nos envolvemos em tratativas entre as partes, valores ou serviços acordados entre as
+        partes, condições de atendimento, valores e alinhamentos devem ser combinados exclusivamente
+        e diretamente com o anunciante antes da realização de qualquer encontro.
       </p>
-      <p className="mt-2 font-medium text-gold">Evite golpes — não faça pagamento antecipado.</p>
     </section>
   );
 }
@@ -531,7 +531,9 @@ export function ProfilePageView({
                 >
                   <span className="font-medium text-text-primary">{slot.label}</span>
                   <span className="text-text-muted">
-                    {slot.startTime}–{slot.endTime}
+                    {slot.startTime === "00:00" && slot.endTime === "23:59"
+                      ? "24h"
+                      : `${slot.startTime}–${slot.endTime}`}
                   </span>
                 </span>
               ))}
