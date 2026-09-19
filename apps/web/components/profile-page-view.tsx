@@ -183,7 +183,7 @@ function ProfileStats({
   overlay?: boolean;
 }) {
   const pillClass = overlay
-    ? "rounded-full border border-orange/50 bg-orange/90 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
+    ? "rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-xs font-semibold text-white/90 backdrop-blur-[2px]"
     : "rounded-full border border-gold/50 bg-gold/90 px-3 py-1 text-sm font-medium text-[#1a1408]";
 
   const locationText = profile.locationLabel ?? profile.city;
@@ -220,7 +220,7 @@ function ProfileMetaChips({
   overlay?: boolean;
 }) {
   const pillClass = overlay
-    ? "rounded-full border border-orange/50 bg-orange/90 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
+    ? "rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-xs font-semibold text-white/90 backdrop-blur-[2px]"
     : "rounded-full border border-gold/50 bg-gold/90 px-3 py-1 text-sm font-medium text-[#1a1408]";
 
   const items: Array<{ emoji: string; label: string }> = [];

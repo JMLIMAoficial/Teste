@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-function PhotosIcon({ className }: { className?: string }) {
+function MomentsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M4.5 5.25A2.75 2.75 0 0 1 7.25 2.5h9.5a2.75 2.75 0 0 1 2.75 2.75v13.5a2.75 2.75 0 0 1-2.75 2.75h-9.5A2.75 2.75 0 0 1 4.5 18.75V5.25Zm6.05 3.2a.9.9 0 0 0-1.35.78v5.54a.9.9 0 0 0 1.35.78l4.55-2.77a.9.9 0 0 0 0-1.56l-4.55-2.77Z" />
+      <path d="M12 2.2 13.7 8.3 19.8 10 13.7 11.7 12 17.8 10.3 11.7 4.2 10 10.3 8.3 12 2.2Zm6.2 10.3 1 3.4 3.4 1-3.4 1-1 3.4-1-3.4-3.4-1 3.4-1 1-3.4Zm-13.1.9.75 2.55 2.55.75-2.55.75-.75 2.55-.75-2.55-2.55-.75 2.55-.75.75-2.55Z" />
     </svg>
   );
 }
@@ -22,8 +22,8 @@ function LoginIcon({ className }: { className?: string }) {
 function iconBtnClass(active: boolean) {
   return `inline-flex h-10 w-10 flex-col items-center justify-center rounded-xl transition-colors ${
     active
-      ? "bg-[#1a1408] text-[#f5d78a]"
-      : "bg-[#1a1408]/10 text-[#1a1408] hover:bg-[#1a1408]/20"
+      ? "bg-white/40 text-[#1a1408]"
+      : "text-[#1a1408]/70 hover:bg-[#1a1408]/10 hover:text-[#1a1408]"
   }`;
 }
 
@@ -47,7 +47,7 @@ export function MobileTopIcons() {
         title="Momentos"
         aria-label="Momentos"
       >
-        <PhotosIcon className="h-5 w-5" />
+        <MomentsIcon className="h-5 w-5" />
       </Link>
       <Link href="/login" className={iconBtnClass(onLogin)} title="Entrar" aria-label="Entrar">
         <LoginIcon className="h-5 w-5" />
