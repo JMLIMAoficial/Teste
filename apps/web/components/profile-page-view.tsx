@@ -318,7 +318,7 @@ function ProfileWhatsAppSection({
 
   return (
     <section
-      className="fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] z-30 border-t border-success/20 bg-bg-secondary/95 p-3 shadow-[0_-8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md md:bottom-0 md:p-4"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-success/20 bg-bg-secondary/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.45)] backdrop-blur-md md:p-4 md:pb-[max(1rem,env(safe-area-inset-bottom))]"
       aria-label="Contato WhatsApp"
     >
       <div className="mx-auto max-w-4xl">
@@ -371,7 +371,7 @@ export function ProfilePageView({
 
   return (
     <ProfilePhotoGalleryProvider photos={galleryPhotos}>
-    <div className={`min-h-full bg-bg-primary ${showWhatsApp ? "pb-[calc(7.5rem+env(safe-area-inset-bottom))] md:pb-28" : "pb-8"}`}>
+    <div className={`min-h-full bg-bg-primary ${showWhatsApp ? "pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-28" : "pb-8"}`}>
       <section
         className={`relative aspect-[3/4] max-h-[min(85vh,720px)] w-full overflow-hidden md:hidden ${profile.isPremium ? "ring-2 ring-inset ring-gold/30" : ""}`}
       >
