@@ -1,6 +1,6 @@
 import { PrismaClient, ProfilePosition } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { existsSync, mkdirSync, statSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { encryptValue } from '../apps/api/src/common/crypto.util';
 
@@ -9,7 +9,42 @@ const BCRYPT_ROUNDS = 12;
 const DEMO_COMPANION_PASSWORD = 'Demo123!';
 const WHATSAPP_KEY =
   process.env.WHATSAPP_ENCRYPTION_KEY ?? process.env.JWT_SECRET ?? 'dev-jwt-secret-change-in-production';
-const UPLOAD_DIR = process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads');
+const UPLOAD_DIR = join(process.cwd(), 'uploads');
+/** Tiny 1x1 / placehold stubs are useless; real portraits are typically 30KB+ */
+const MIN_REAL_PHOTO_BYTES = 15_000;
+
+/** Curated Unsplash male portraits for demo profiles (w/h crop via query). */
+const MALE_PORTRAIT_IDS = [
+  '1506794778202-cad84cf45f1d',
+  '1507003211169-0a1dd7228f2d',
+  '1500648767791-00dcc994a43e',
+  '1492562080023-ab3db95bfbce',
+  '1539571696357-5a69c17a67c6',
+  '1519085360753-af0119f7cbe7',
+  '1463453091185-61582044d556',
+  '1501196354221-bf74ce41073f',
+  '1492283400322-c8d1d8b5b4e0',
+  '1521119987601-25eb8b4c0e5a',
+  '1488161628813-0880c8629f94',
+  '1496345875649-0d1f8e2d5c0a',
+];
+
+function hashSeed(value: string) {
+  let h = 0;
+  for (let i = 0; i < value.length; i++) h = (h * 31 + value.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function portraitSources(picSeed: string) {
+  const h = hashSeed(picSeed);
+  const a = MALE_PORTRAIT_IDS[h % MALE_PORTRAIT_IDS.length];
+  const b = MALE_PORTRAIT_IDS[(h + 5) % MALE_PORTRAIT_IDS.length];
+  return [
+    `https://images.unsplash.com/photo-${a}?auto=format&fit=crop&w=600&h=800&q=80`,
+    `https://images.unsplash.com/photo-${b}?auto=format&fit=crop&w=600&h=800&q=80`,
+    `https://i.pravatar.cc/800?u=${encodeURIComponent(picSeed)}`,
+  ];
+}
 
 type DemoProfile = {
   email: string;
@@ -53,32 +88,55 @@ async function createCredential(userId: string, password: string) {
   });
 }
 
+const PLACEHOLDER_JPEG = Buffer.from(
+  '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=',
+  'base64',
+);
+
 async function downloadPhoto(storagePath: string, picSeed: string) {
   const fullPath = join(UPLOAD_DIR, storagePath);
-  if (existsSync(fullPath)) return statSync(fullPath).size;
-
-  const res = await fetch(`https://picsum.photos/seed/${picSeed}/600/800`);
-  if (!res.ok) {
-    throw new Error(`Falha ao baixar foto (${picSeed}): ${res.status}`);
+  if (existsSync(fullPath) && statSync(fullPath).size >= MIN_REAL_PHOTO_BYTES) {
+    return statSync(fullPath).size;
+  }
+  if (existsSync(fullPath)) {
+    unlinkSync(fullPath);
   }
 
   mkdirSync(dirname(fullPath), { recursive: true });
-  writeFileSync(fullPath, Buffer.from(await res.arrayBuffer()));
-  return statSync(fullPath).size;
+
+  for (const url of portraitSources(picSeed)) {
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(25_000),
+        redirect: 'follow',
+        headers: { 'User-Agent': 'AcompanhanteSeed/1.0' },
+      });
+      if (!res.ok) continue;
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length < MIN_REAL_PHOTO_BYTES) continue;
+      writeFileSync(fullPath, buf);
+      return statSync(fullPath).size;
+    } catch {
+      /* tenta próxima fonte */
+    }
+  }
+
+  writeFileSync(fullPath, PLACEHOLDER_JPEG);
+  return PLACEHOLDER_JPEG.length;
 }
 
 async function ensureProfilePhotos(profileId: string, slug: string, seeds: string[]) {
-  const existingCount = await prisma.photo.count({ where: { profileId } });
-  if (existingCount >= seeds.length) return;
+  let created = 0;
 
   for (let i = 0; i < seeds.length; i++) {
     const storagePath = `photos/${profileId}/seed-${i}.jpg`;
     const already = await prisma.photo.findFirst({
       where: { profileId, mediaAsset: { storagePath } },
     });
-    if (already) continue;
 
     const sizeBytes = await downloadPhoto(storagePath, seeds[i]);
+    if (already) continue;
+    created += 1;
     const asset = await prisma.mediaAsset.create({
       data: {
         ownerType: 'photo',
@@ -101,23 +159,23 @@ async function ensureProfilePhotos(profileId: string, slug: string, seeds: strin
     });
   }
 
-  console.log(`  Photos: ${slug} (${seeds.length})`);
+  if (created > 0) {
+    console.log(`  Photos: ${slug} (${created} new, ${seeds.length} total)`);
+  }
 }
 
 async function ensureProfileMoments(profileId: string, slug: string, captions: string[]) {
-  const existingCount = await prisma.moment.count({
-    where: { profileId, deletedAt: null },
-  });
-  if (existingCount >= captions.length) return;
+  let created = 0;
 
   for (let i = 0; i < captions.length; i++) {
     const storagePath = `moments/${profileId}/seed-${i}.jpg`;
     const already = await prisma.moment.findFirst({
       where: { profileId, mediaAsset: { storagePath } },
     });
-    if (already) continue;
 
     const sizeBytes = await downloadPhoto(storagePath, `${slug}-moment-${i}`);
+    if (already) continue;
+    created += 1;
     const asset = await prisma.mediaAsset.create({
       data: {
         ownerType: 'moment',
@@ -140,7 +198,9 @@ async function ensureProfileMoments(profileId: string, slug: string, captions: s
     });
   }
 
-  console.log(`  Moments: ${slug} (${captions.length})`);
+  if (created > 0) {
+    console.log(`  Moments: ${slug} (${created} new, ${captions.length} total)`);
+  }
 }
 
 async function upsertCompanion(companionRoleId: string, demo: DemoProfile) {
