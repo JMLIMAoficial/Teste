@@ -51,10 +51,22 @@ export function MomentCard({ moment }: { moment: MomentItem }) {
     <article className="overflow-hidden rounded-2xl border border-border-subtle bg-bg-secondary">
       <div className="relative aspect-[4/5] overflow-hidden bg-bg-tertiary">
         {isVideo ? (
-          <video src={moment.url} className="h-full w-full object-cover" controls playsInline />
+          <video
+            src={moment.url}
+            className="h-full w-full object-cover"
+            controls
+            playsInline
+            preload="metadata"
+          />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={moment.url} alt="" className="h-full w-full object-cover" />
+          <img
+            src={moment.thumbUrl ?? moment.url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
         )}
       </div>
       <div className="p-4">

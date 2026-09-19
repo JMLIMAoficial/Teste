@@ -281,7 +281,7 @@ export function ProfilePhotoGrid({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={photo.url}
+            src={photo.thumbUrl ?? photo.url}
             alt=""
             loading="lazy"
             decoding="async"

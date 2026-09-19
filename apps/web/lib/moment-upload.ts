@@ -68,6 +68,7 @@ export type OwnMomentItem = {
   status: string;
   mediaType: string;
   url: string;
+  thumbUrl?: string;
   mimeType: string;
   viewCount: number;
   likeCount: number;

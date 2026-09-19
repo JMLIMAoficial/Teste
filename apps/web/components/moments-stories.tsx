@@ -313,7 +313,13 @@ export function MomentsFeed({
               >
                 <div className="h-8 w-8 overflow-hidden rounded-full border border-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={moment.url} alt="" decoding="async" loading="lazy" className="h-full w-full object-cover" />
+                  <img
+                    src={moment.thumbUrl ?? moment.url}
+                    alt=""
+                    decoding="async"
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">{moment.profileName}</p>

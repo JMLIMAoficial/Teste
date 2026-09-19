@@ -39,13 +39,9 @@ export function VideoCard({
       >
         <div className="relative aspect-video overflow-hidden bg-bg-tertiary">
           {isVideo ? (
-            <video
-              src={video.url}
-              className="h-full w-full object-cover"
-              muted
-              playsInline
-              preload="metadata"
-            />
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/50 to-bg-tertiary">
+              <span className="sr-only">Prévia do vídeo</span>
+            </div>
           ) : (
             <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-900/60 to-orange-900/40">
               <span className="text-4xl text-text-muted">▶</span>

@@ -31,7 +31,13 @@ const ReportContentModal = dynamic(
   },
 );
 
-type ProfilePhoto = { id: string; url: string; isCover: boolean; isProfile?: boolean };
+type ProfilePhoto = {
+  id: string;
+  url: string;
+  thumbUrl?: string;
+  isCover: boolean;
+  isProfile?: boolean;
+};
 type SocialLinks = Partial<Record<"privacy" | "onlyfans" | "x" | "instagram", string>>;
 
 export type ProfilePageData = {

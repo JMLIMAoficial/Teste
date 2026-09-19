@@ -17,35 +17,43 @@ export function NotificationBell({ href = "/painel" }: { href?: string }) {
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Notification[]>([]);
+  const [listLoaded, setListLoaded] = useState(false);
 
-  const load = useCallback(async () => {
+  const loadCount = useCallback(async () => {
     if (!getAccessToken()) return;
     try {
-      const [countRes, listRes] = await Promise.all([
-        apiFetch<{ count: number }>("/v1/notifications/unread-count"),
-        apiFetch<{ data: Notification[] }>("/v1/notifications"),
-      ]);
+      const countRes = await apiFetch<{ count: number }>("/v1/notifications/unread-count");
       setCount(countRes.count);
-      setItems(listRes.data.slice(0, 8));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const loadList = useCallback(async () => {
+    if (!getAccessToken()) return;
+    try {
+      const listRes = await apiFetch<{ data: Notification[] }>("/v1/notifications?take=8");
+      setItems((listRes.data ?? []).slice(0, 8));
+      setListLoaded(true);
     } catch {
       /* ignore */
     }
   }, []);
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 60000);
+    loadCount();
+    const interval = setInterval(loadCount, 60000);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [loadCount]);
 
   async function markRead(id: string) {
     await apiFetch(`/v1/notifications/${id}/read`, { method: "PATCH" });
-    await load();
+    await Promise.all([loadCount(), loadList()]);
   }
 
   async function markAllRead() {
     await apiFetch("/v1/notifications/read-all", { method: "PATCH" });
-    await load();
+    await Promise.all([loadCount(), loadList()]);
   }
 
   if (!getAccessToken()) return null;
@@ -55,8 +63,9 @@ export function NotificationBell({ href = "/painel" }: { href?: string }) {
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => !v);
-          if (!open) load();
+          const next = !open;
+          setOpen(next);
+          if (next) void loadList();
         }}
         className="relative rounded-lg p-2 text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
         aria-label="Notificações"
@@ -83,7 +92,9 @@ export function NotificationBell({ href = "/painel" }: { href?: string }) {
             )}
           </div>
           <div className="max-h-80 overflow-y-auto">
-            {items.length === 0 ? (
+            {!listLoaded ? (
+              <p className="p-4 text-sm text-text-muted">Carregando…</p>
+            ) : items.length === 0 ? (
               <p className="p-4 text-sm text-text-muted">Nenhuma notificação.</p>
             ) : (
               items.map((n) => (
@@ -120,7 +131,7 @@ export function NotificationBell({ href = "/painel" }: { href?: string }) {
           </div>
           <div className="border-t border-border-subtle p-3 text-center">
             <Link
-              href="/painel/notificacoes"
+              href={href}
               className="text-xs text-purple-light hover:text-gold"
               onClick={() => setOpen(false)}
             >

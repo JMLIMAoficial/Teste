@@ -6,6 +6,11 @@ import {
 import { MomentMediaType } from '@prisma/client';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ImageVariantsService,
+  mediumStoragePath,
+  thumbStoragePath,
+} from '../storage/image-variants.service';
 import { StorageService } from '../storage/storage.service';
 import { randomUUID } from 'crypto';
 
@@ -14,6 +19,7 @@ export class MomentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly imageVariants: ImageVariantsService,
     private readonly analytics: AnalyticsService,
   ) {}
 
@@ -54,6 +60,14 @@ export class MomentsService {
     const storagePath = `moments/${profile.id}/${randomUUID()}.${ext}`;
     await this.storage.upload(storagePath, file.buffer, file.mimetype);
 
+    if (!isVideo) {
+      const { thumb, medium } = await this.imageVariants.generateVariants(file.buffer);
+      await Promise.all([
+        this.storage.upload(thumbStoragePath(storagePath), thumb, 'image/webp'),
+        this.storage.upload(mediumStoragePath(storagePath), medium, 'image/webp'),
+      ]);
+    }
+
     const asset = await this.prisma.mediaAsset.create({
       data: {
         ownerType: 'moment',
@@ -89,7 +103,11 @@ export class MomentsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return { data: moments.map((m) => this.toMomentDto(m, profile.displayName, profile.slug)) };
+    return {
+      data: await Promise.all(
+        moments.map((m) => this.toMomentDto(m, profile.displayName, profile.slug)),
+      ),
+    };
   }
 
   async getOwnStats(userId: string) {
@@ -136,6 +154,8 @@ export class MomentsService {
   }
 
   async getFeed(limit = 20, offset = 0) {
+    const take = Math.min(Math.max(limit, 1), 40);
+    const skip = Math.max(offset, 0);
     const moments = await this.prisma.moment.findMany({
       where: {
         status: 'approved',
@@ -147,13 +167,15 @@ export class MomentsService {
         profile: { include: { location: true } },
       },
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-      take: limit,
-      skip: offset,
+      take,
+      skip,
     });
 
     return {
-      data: moments.map((m) =>
-        this.toMomentDto(m, m.profile.displayName, m.profile.slug, m.profile.location),
+      data: await Promise.all(
+        moments.map((m) =>
+          this.toMomentDto(m, m.profile.displayName, m.profile.slug, m.profile.location),
+        ),
       ),
       total: moments.length,
     };
@@ -173,12 +195,14 @@ export class MomentsService {
     });
 
     return {
-      data: moments.map((m) => this.toMomentDto(m, profile.displayName, profile.slug)),
+      data: await Promise.all(
+        moments.map((m) => this.toMomentDto(m, profile.displayName, profile.slug)),
+      ),
       total: moments.length,
     };
   }
 
-  toMomentDto(
+  async toMomentDto(
     moment: {
       id: string;
       caption: string | null;
@@ -195,12 +219,25 @@ export class MomentsService {
     profileSlug: string,
     location?: { city: string; state: string } | null,
   ) {
+    const isVideo =
+      moment.mediaType === 'video' || moment.mediaAsset.mimeType.startsWith('video/');
+    const originalUrl = this.storage.getPublicUrl(moment.mediaAsset.storagePath);
+
+    let url = originalUrl;
+    let thumbUrl = originalUrl;
+    if (!isVideo) {
+      const urls = await this.storage.resolvePhotoUrls(moment.mediaAsset.storagePath);
+      url = urls.coverPhotoUrl;
+      thumbUrl = urls.coverPhotoThumbUrl;
+    }
+
     return {
       id: moment.id,
       caption: moment.caption,
       status: moment.status,
       mediaType: moment.mediaType,
-      url: this.storage.getPublicUrl(moment.mediaAsset.storagePath),
+      url,
+      thumbUrl,
       mimeType: moment.mediaAsset.mimeType,
       viewCount: moment.viewCount,
       likeCount: moment.likeCount,

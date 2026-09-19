@@ -31,7 +31,13 @@ type ApiProfileDetail = {
   position?: string | null;
   penisSizeCm?: number | null;
   tags?: string[];
-  photos?: Array<{ id: string; url: string; isCover: boolean; isProfile?: boolean }>;
+  photos?: Array<{
+    id: string;
+    url: string;
+    thumbUrl?: string;
+    isCover: boolean;
+    isProfile?: boolean;
+  }>;
   coverPhotoUrl?: string | null;
   hotScore?: number;
   hotScoreLabel?: string;
@@ -173,7 +179,13 @@ export default async function ProfilePage({ params }: PageProps) {
         position: null as string | null,
         penisSizeCm: mockProfile!.penisSizeCm,
         tags: mockProfile!.tags,
-        photos: [] as Array<{ id: string; url: string; isCover: boolean; isProfile?: boolean }>,
+        photos: [] as Array<{
+          id: string;
+          url: string;
+          thumbUrl?: string;
+          isCover: boolean;
+          isProfile?: boolean;
+        }>,
         photoGradient: mockProfile!.photoGradient,
         hotScore: mockProfile!.hotScore,
         hotScoreLabel: mockProfile!.hotScoreLabel,

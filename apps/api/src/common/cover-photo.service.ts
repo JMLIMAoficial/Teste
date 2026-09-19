@@ -43,23 +43,34 @@ export class CoverPhotoService {
   async resolveCoverPhotoMap(profileIds: string[]): Promise<Map<string, PhotoUrls>> {
     if (profileIds.length === 0) return new Map<string, PhotoUrls>();
 
-    const photos = await this.prisma.photo.findMany({
-      where: { profileId: { in: profileIds }, status: 'approved' },
+    // Prefer main/cover only — avoid loading every album photo for list cards.
+    const mainPhotos = await this.prisma.photo.findMany({
+      where: {
+        profileId: { in: profileIds },
+        status: 'approved',
+        OR: [{ isCover: true }, { isProfile: true }],
+      },
       include: { mediaAsset: true },
       orderBy: [{ sortOrder: 'asc' }],
     });
 
-    const byProfile = new Map<string, typeof photos>();
-    for (const photo of photos) {
-      const list = byProfile.get(photo.profileId) ?? [];
-      list.push(photo);
-      byProfile.set(photo.profileId, list);
+    const profilePaths = new Map<string, string>();
+    for (const photo of mainPhotos) {
+      if (profilePaths.has(photo.profileId)) continue;
+      profilePaths.set(photo.profileId, photo.mediaAsset.storagePath);
     }
 
-    const profilePaths = new Map<string, string>();
-    for (const [profileId, list] of byProfile) {
-      const path = this.pickMainStoragePath(list);
-      if (path) profilePaths.set(profileId, path);
+    const missing = profileIds.filter((id) => !profilePaths.has(id));
+    if (missing.length > 0) {
+      const fallbacks = await this.prisma.photo.findMany({
+        where: { profileId: { in: missing }, status: 'approved' },
+        include: { mediaAsset: true },
+        orderBy: [{ sortOrder: 'asc' }],
+      });
+      for (const photo of fallbacks) {
+        if (profilePaths.has(photo.profileId)) continue;
+        profilePaths.set(photo.profileId, photo.mediaAsset.storagePath);
+      }
     }
 
     const urlCache = new Map<string, PhotoUrls>();

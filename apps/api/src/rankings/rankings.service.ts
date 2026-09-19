@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { HotScoreLevel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CoverPhotoService } from '../common/cover-photo.service';
 import { toPublicCard } from '../common/profile.mapper';
@@ -11,16 +12,75 @@ export class RankingsService {
   ) {}
 
   async getRankings(type: string = 'hotscore', limit = 20) {
-    const profiles = await this.prisma.profile.findMany({
-      where: { status: 'approved', isPublic: true, deletedAt: null },
-      include: { location: true, tags: true },
-      take: 100,
-    });
+    const take = Math.min(Math.max(limit, 1), 50);
+
+    if (type === 'premium') {
+      const profiles = await this.prisma.profile.findMany({
+        where: { status: 'approved', isPublic: true, deletedAt: null, isPremium: true },
+        include: { location: true, tags: true },
+        orderBy: [{ viewCount: 'desc' }],
+        take,
+      });
+      return this.buildRankingResponse(type, profiles, take);
+    }
+
+    if (type === 'views') {
+      const profiles = await this.prisma.profile.findMany({
+        where: { status: 'approved', isPublic: true, deletedAt: null },
+        include: { location: true, tags: true },
+        orderBy: [{ viewCount: 'desc' }],
+        take,
+      });
+      return this.buildRankingResponse(type, profiles, take);
+    }
 
     const hotScores = await this.prisma.hotScore.findMany({
-      where: { profileId: { in: profiles.map((p) => p.id) } },
+      orderBy: { score: 'desc' },
+      take: take * 2,
     });
-    const hotMap = new Map(hotScores.map((h) => [h.profileId, h]));
+    const profiles = await this.prisma.profile.findMany({
+      where: {
+        id: { in: hotScores.map((h) => h.profileId) },
+        status: 'approved',
+        isPublic: true,
+        deletedAt: null,
+      },
+      include: { location: true, tags: true },
+    });
+    const order = new Map(hotScores.map((h, i) => [h.profileId, i]));
+    profiles.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
+
+    return this.buildRankingResponse(type, profiles.slice(0, take), take, hotScores);
+  }
+
+  private async buildRankingResponse(
+    type: string,
+    profiles: Array<{
+      id: string;
+      slug: string;
+      displayName: string;
+      birthDate: Date | null;
+      sexualPreference: string | null;
+      isPremium: boolean;
+      isFeatured: boolean;
+      viewCount: number;
+      penisSizeCm: number | null;
+      isVerified: boolean;
+      location: {
+        city: string;
+        state: string;
+        neighborhood: string | null;
+      } | null;
+      tags: Array<{ tagId: string; sortOrder: number }>;
+    }>,
+    limit: number,
+    hotScores?: Array<{ profileId: string; score: unknown; level: HotScoreLevel }>,
+  ) {
+    const hotMap = new Map(
+      (hotScores ?? (await this.prisma.hotScore.findMany({
+        where: { profileId: { in: profiles.map((p) => p.id) } },
+      }))).map((h) => [h.profileId, h]),
+    );
     const tagMap = await this.resolveTags(profiles.flatMap((p) => p.tags.map((t) => t.tagId)));
     const coverMap = await this.coverPhoto.resolveCoverPhotoMap(profiles.map((p) => p.id));
 
@@ -47,8 +107,8 @@ export class RankingsService {
         location: p.location,
         penisSizeCm: p.penisSizeCm,
         isVerified: p.isVerified,
-        coverPhotoUrl: cover?.coverPhotoUrl ?? null,
-        coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? null,
+        coverPhotoUrl: null,
+        coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? cover?.coverPhotoUrl ?? null,
       });
 
       return {
@@ -65,20 +125,6 @@ export class RankingsService {
                 : card.hotScore,
       };
     });
-
-    entries.sort((a, b) => Number(b.metric) - Number(a.metric));
-
-    if (type === 'premium') {
-      const premiumOnly = entries.filter((e) => e.isPremium);
-      return {
-        type,
-        data: premiumOnly.slice(0, limit).map((e, i) => ({
-          position: i + 1,
-          ...e,
-        })),
-        total: premiumOnly.length,
-      };
-    }
 
     return {
       type,

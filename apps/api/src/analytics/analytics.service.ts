@@ -1,12 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SearchService } from '../search/search.service';
 import { SettingsService } from '../platform/settings.service';
 import { computeHotScore, hotScoreLevel, effectiveProfileStatus } from '../common/profile.mapper';
 
+/** Recalculate hot-score at most once per profile inside this window. */
+const HOT_SCORE_DEBOUNCE_MS = 30_000;
+/** Full hot-score recompute every N profile views (still increments every time). */
+const HOT_SCORE_EVERY_N_VIEWS = 10;
+
 @Injectable()
 export class AnalyticsService {
+  private readonly logger = new Logger(AnalyticsService.name);
+  private readonly hotScoreTimers = new Map<string, NodeJS.Timeout>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly search: SearchService,
@@ -35,23 +43,28 @@ export class AnalyticsService {
     }
 
     if (eventType === 'WhatsAppClicked' && data.profileId) {
-      await this.recalculateHotScore(data.profileId);
+      this.scheduleHotScore(data.profileId);
     }
 
     return { tracked: true };
   }
 
   private async onProfileViewed(profileId: string) {
-    await this.prisma.profile.update({
+    const updated = await this.prisma.profile.update({
       where: { id: profileId },
       data: { viewCount: { increment: 1 } },
+      select: { viewCount: true },
     });
-    await this.recalculateHotScore(profileId);
+
+    if (updated.viewCount % HOT_SCORE_EVERY_N_VIEWS === 0) {
+      this.scheduleHotScore(profileId);
+    }
   }
 
   private async onMomentViewed(momentId: string) {
     const moment = await this.prisma.moment.findFirst({
       where: { id: momentId, status: 'approved', deletedAt: null },
+      select: { id: true, profileId: true },
     });
     if (!moment) return;
 
@@ -59,7 +72,22 @@ export class AnalyticsService {
       where: { id: momentId },
       data: { viewCount: { increment: 1 } },
     });
-    await this.recalculateHotScore(moment.profileId);
+    this.scheduleHotScore(moment.profileId);
+  }
+
+  /** Coalesce many view events into one hot-score recompute. */
+  scheduleHotScore(profileId: string) {
+    const existing = this.hotScoreTimers.get(profileId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.hotScoreTimers.delete(profileId);
+      void this.recalculateHotScore(profileId).catch((err) => {
+        this.logger.warn(`hot-score failed for ${profileId}: ${err}`);
+      });
+    }, HOT_SCORE_DEBOUNCE_MS);
+
+    this.hotScoreTimers.set(profileId, timer);
   }
 
   async recalculateHotScore(profileId: string) {

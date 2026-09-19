@@ -13,6 +13,18 @@ export function haversineKm(
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/** Rough lat/lng bounds for a radius (km). Used to prefilter before haversine. */
+export function boundingBox(lat: number, lng: number, radiusKm: number) {
+  const latDelta = radiusKm / 111.32;
+  const lngDelta = radiusKm / (111.32 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+  return {
+    minLat: lat - latDelta,
+    maxLat: lat + latDelta,
+    minLng: lng - lngDelta,
+    maxLng: lng + lngDelta,
+  };
+}
+
 export function normalizeCep(cep: string): string {
   return cep.replace(/\D/g, '');
 }

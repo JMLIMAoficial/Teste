@@ -343,6 +343,8 @@ export type MomentItem = {
   id: string;
   caption?: string | null;
   url: string;
+  /** Thumb ~480px when available; falls back to url for video/legacy. */
+  thumbUrl?: string;
   mimeType: string;
   mediaType: string;
   likeCount: number;

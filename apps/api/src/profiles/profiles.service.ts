@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ContactService } from '../common/contact.service';
 import { CoverPhotoService } from '../common/cover-photo.service';
-import { haversineKm } from '../common/geo.util';
+import { haversineKm, boundingBox } from '../common/geo.util';
 import { toPublicCard, formatMemberSince, buildProfileLocationFields } from '../common/profile.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -18,18 +18,28 @@ export class ProfilesService {
     private readonly coverPhoto: CoverPhotoService,
   ) {}
 
-  async listNearby(lat: number, lng: number, _radiusKm = 100, limit = 50) {
+  async listNearby(lat: number, lng: number, radiusKm = 100, limit = 50) {
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       throw new BadRequestException('Coordenadas inválidas');
     }
+
+    const take = Math.min(Math.max(limit, 1), 50);
+    const radius = Math.min(Math.max(radiusKm, 1), 500);
+    const box = boundingBox(lat, lng, radius);
 
     const profiles = await this.prisma.profile.findMany({
       where: {
         status: 'approved',
         isPublic: true,
         deletedAt: null,
+        location: {
+          latitude: { gte: box.minLat, lte: box.maxLat },
+          longitude: { gte: box.minLng, lte: box.maxLng },
+        },
       },
       include: { location: true, tags: true },
+      // Cap candidates before haversine sort (bounding box can still be large).
+      take: Math.min(take * 8, 200),
     });
 
     const ranked = profiles
@@ -44,13 +54,9 @@ export class ProfilesService {
             : undefined;
         return { profile: p, distanceKm };
       })
-      .sort((a, b) => {
-        if (a.distanceKm == null && b.distanceKm == null) return 0;
-        if (a.distanceKm == null) return 1;
-        if (b.distanceKm == null) return -1;
-        return a.distanceKm - b.distanceKm;
-      })
-      .slice(0, limit);
+      .filter((r) => r.distanceKm != null && r.distanceKm <= radius)
+      .sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0))
+      .slice(0, take);
 
     const coverMap = await this.coverPhoto.resolveCoverPhotoMap(ranked.map((r) => r.profile.id));
 
@@ -91,14 +97,16 @@ export class ProfilesService {
             distanceKm,
             penisSizeCm: p.penisSizeCm,
             position: p.position,
-            coverPhotoUrl: cover?.coverPhotoUrl ?? null,
-            coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? null,
+            // List cards only need thumb — skip shipping the medium URL.
+            coverPhotoUrl: null,
+            coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? cover?.coverPhotoUrl ?? null,
             isVerified: p.isVerified,
           }),
         };
       }),
       total: ranked.length,
       center: { lat, lng },
+      radiusKm: radius,
     };
   }
 
@@ -148,8 +156,8 @@ export class ProfilesService {
           location: p.location,
           penisSizeCm: p.penisSizeCm,
           position: p.position,
-          coverPhotoUrl: cover?.coverPhotoUrl ?? null,
-          coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? null,
+          coverPhotoUrl: null,
+          coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? cover?.coverPhotoUrl ?? null,
           isVerified: p.isVerified,
         });
       }),
@@ -158,6 +166,7 @@ export class ProfilesService {
   }
 
   async listSimilar(slug: string, limit = 8) {
+    const take = Math.min(Math.max(limit, 1), 12);
     const source = await this.prisma.profile.findFirst({
       where: { slug, status: 'approved', isPublic: true, deletedAt: null },
       include: { location: true, tags: true },
@@ -171,9 +180,17 @@ export class ProfilesService {
         status: 'approved',
         isPublic: true,
         deletedAt: null,
+        ...(source.location?.city
+          ? {
+              OR: [
+                { location: { city: { equals: source.location.city, mode: 'insensitive' } } },
+                { tags: { some: { tagId: { in: source.tags.map((t) => t.tagId) } } } },
+              ],
+            }
+          : {}),
       },
       include: { location: true, tags: true },
-      take: 80,
+      take: Math.min(take * 5, 40),
     });
 
     const sourceTagIds = new Set(source.tags.map((t) => t.tagId));
@@ -209,7 +226,7 @@ export class ProfilesService {
       })
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+      .slice(0, take);
 
     const tagMap = await this.resolveTags(
       scored.flatMap((s) => s.candidate.tags.map((t) => t.tagId)),
@@ -248,8 +265,8 @@ export class ProfilesService {
             location: candidate.location,
             penisSizeCm: candidate.penisSizeCm,
             position: candidate.position,
-            coverPhotoUrl: cover?.coverPhotoUrl ?? null,
-            coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? null,
+            coverPhotoUrl: null,
+            coverPhotoThumbUrl: cover?.coverPhotoThumbUrl ?? cover?.coverPhotoUrl ?? null,
             isVerified: candidate.isVerified,
           }),
         };
@@ -281,10 +298,11 @@ export class ProfilesService {
 
     if (!profile) return null;
 
-    await this.analytics.track('ProfileViewed', {
+    // Don't block the profile response on analytics / hot-score work.
+    void this.analytics.track('ProfileViewed', {
       profileId: profile.id,
       sessionId,
-    });
+    }).catch(() => undefined);
 
     const tagMap = await this.resolveTags(profile.tags.map((t) => t.tagId));
     const tags = profile.tags

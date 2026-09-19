@@ -132,10 +132,16 @@ export default function PainelMomentosPage() {
                       className="h-full w-full object-cover"
                       controls
                       playsInline
+                      preload="metadata"
                     />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={moment.url} alt="" className="h-full w-full object-cover" />
+                    <img
+                      src={moment.thumbUrl ?? moment.url}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
                   )}
                   <span
                     className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${statusClass(moment.status)}`}
